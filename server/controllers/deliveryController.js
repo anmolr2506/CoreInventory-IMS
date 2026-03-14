@@ -1,5 +1,35 @@
 const pool = require("../db");
 
+const getLatestReceiptUnitPrice = async (productId) => {
+    try {
+        const result = await pool.query(
+            `SELECT unit_price
+             FROM receipts
+             WHERE product_id = $1 AND unit_price IS NOT NULL
+             ORDER BY received_at DESC NULLS LAST, receipt_id DESC
+             LIMIT 1`,
+            [productId]
+        );
+        return parseFloat(result.rows[0]?.unit_price) || 0;
+    } catch {
+        return 0;
+    }
+};
+
+const getAverageSupplierPrice = async (productId) => {
+    try {
+        const result = await pool.query(
+            `SELECT AVG(price)::NUMERIC(10,2) AS unit_price
+             FROM supplier_products
+             WHERE product_id = $1`,
+            [productId]
+        );
+        return parseFloat(result.rows[0]?.unit_price) || 0;
+    } catch {
+        return 0;
+    }
+};
+
 const getDropdowns = async (req, res) => {
     try {
         const [products, warehouses, users] = await Promise.all([
@@ -14,7 +44,7 @@ const getDropdowns = async (req, res) => {
         });
     } catch (err) {
         console.error(err.message);
-        res.status(500).json("Server Error");
+        res.status(500).json({ error: "Server Error" });
     }
 };
 
@@ -32,23 +62,7 @@ const validateDelivery = async (req, res) => {
                 `SELECT COALESCE(i.quantity, 0) AS available,
                         p.name,
                         p.sku,
-                        p.unit,
-                        COALESCE(
-                            (
-                                SELECT r.unit_price
-                                FROM receipts r
-                                WHERE r.product_id = p.product_id
-                                  AND r.unit_price IS NOT NULL
-                                ORDER BY r.received_at DESC NULLS LAST, r.receipt_id DESC
-                                LIMIT 1
-                            ),
-                            (
-                                SELECT AVG(sp.price)::NUMERIC(10,2)
-                                FROM supplier_products sp
-                                WHERE sp.product_id = p.product_id
-                            ),
-                            0
-                        ) AS unit_price
+                        p.unit
                  FROM products p
                  LEFT JOIN inventory i ON p.product_id = i.product_id AND i.warehouse_id = $1
                  WHERE p.product_id = $2`,
@@ -69,7 +83,12 @@ const validateDelivery = async (req, res) => {
                     message: `Less quantity available for ${p.name}: only ${available} ${p.unit} available, requested ${requested}`
                 });
             }
-            const unitPrice = parseFloat(p.unit_price) || 0;
+
+            let unitPrice = await getLatestReceiptUnitPrice(parseInt(line.product_id));
+            if (unitPrice <= 0) {
+                unitPrice = await getAverageSupplierPrice(parseInt(line.product_id));
+            }
+
             const lineTotal = unitPrice * requested;
             grandTotal += lineTotal;
             validated.push({
@@ -122,26 +141,10 @@ const generateDelivery = async (req, res) => {
             // Fallback price if client sends empty/zero value.
             let unitPrice = parseFloat(line.unit_price);
             if (!Number.isFinite(unitPrice) || unitPrice <= 0) {
-                const priceRow = await pool.query(
-                    `SELECT COALESCE(
-                        (
-                            SELECT r.unit_price
-                            FROM receipts r
-                            WHERE r.product_id = $1
-                              AND r.unit_price IS NOT NULL
-                            ORDER BY r.received_at DESC NULLS LAST, r.receipt_id DESC
-                            LIMIT 1
-                        ),
-                        (
-                            SELECT AVG(sp.price)::NUMERIC(10,2)
-                            FROM supplier_products sp
-                            WHERE sp.product_id = $1
-                        ),
-                        0
-                    ) AS unit_price`,
-                    [line.product_id]
-                );
-                unitPrice = parseFloat(priceRow.rows[0]?.unit_price) || 0;
+                unitPrice = await getLatestReceiptUnitPrice(parseInt(line.product_id));
+                if (unitPrice <= 0) {
+                    unitPrice = await getAverageSupplierPrice(parseInt(line.product_id));
+                }
             }
 
             const ins = await pool.query(

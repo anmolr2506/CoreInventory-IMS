@@ -1,5 +1,20 @@
 const pool = require("../db");
 
+const getSupplierPrice = async (supplierId, productId) => {
+    try {
+        const priceRow = await pool.query(
+            `SELECT price
+             FROM supplier_products
+             WHERE supplier_id = $1 AND product_id = $2
+             LIMIT 1`,
+            [supplierId, productId]
+        );
+        return parseFloat(priceRow.rows[0]?.price) || 0;
+    } catch {
+        return 0;
+    }
+};
+
 const getDropdowns = async (req, res) => {
     try {
         const [products, suppliers, warehouses, users] = await Promise.all([
@@ -30,18 +45,17 @@ const validateReceipt = async (req, res) => {
         let grandTotal = 0;
         for (const line of lines) {
             if (!line.product_id || !line.quantity || line.quantity <= 0) continue;
-            const priceRow = await pool.query(
-                `SELECT p.product_id, p.name, p.sku, p.unit, COALESCE(sp.price, 0) AS unit_price
-                 FROM products p
-                 LEFT JOIN supplier_products sp ON p.product_id = sp.product_id AND sp.supplier_id = $1
-                 WHERE p.product_id = $2`,
-                [supplier_id, line.product_id]
+            const productRow = await pool.query(
+                `SELECT product_id, name, sku, unit
+                 FROM products
+                 WHERE product_id = $1`,
+                [line.product_id]
             );
-            if (priceRow.rows.length === 0) {
+            if (productRow.rows.length === 0) {
                 return res.status(400).json({ error: `Product ${line.product_id} not found` });
             }
-            const p = priceRow.rows[0];
-            const unitPrice = parseFloat(p.unit_price) || 0;
+            const p = productRow.rows[0];
+            const unitPrice = await getSupplierPrice(supplier_id, line.product_id);
             const lineTotal = unitPrice * parseInt(line.quantity);
             grandTotal += lineTotal;
             validated.push({
@@ -182,7 +196,7 @@ const getReceiptStatusCounts = async (req, res) => {
         res.json(counts);
     } catch (err) {
         console.error(err.message);
-        res.status(500).json("Server Error");
+        res.status(500).json({ error: "Server Error" });
     }
 };
 
