@@ -148,7 +148,7 @@ const OperationsScreen = ({ type, title, subtitle, accentColor, onNewClick, onBa
                             <table className="w-full text-sm">
                                 <thead>
                                     <tr className="border-b border-[#334155]/50">
-                                        {isReceipt && <th className="text-left py-3 px-4 text-slate-500 font-semibold uppercase tracking-wider">Reference</th>}
+                                        <th className="text-left py-3 px-4 text-slate-500 font-semibold uppercase tracking-wider">Reference</th>
                                         <th className="text-left py-3 px-4 text-slate-500 font-semibold uppercase tracking-wider">Product</th>
                                         {isReceipt ? (
                                             <>
@@ -169,18 +169,16 @@ const OperationsScreen = ({ type, title, subtitle, accentColor, onNewClick, onBa
                                 <tbody>
                                     {data.length === 0 ? (
                                         <tr>
-                                            <td colSpan={isReceipt ? 7 : 6} className="py-12 text-center text-slate-500">
+                                            <td colSpan={7} className="py-12 text-center text-slate-500">
                                                 No {title.toLowerCase()}s found.
                                             </td>
                                         </tr>
                                     ) : (
                                         data.map((row) => (
                                             <tr key={row.receipt_id || row.delivery_id} className="border-b border-[#1e293b]/50 hover:bg-[#1e293b]/30 transition-colors">
-                                                {isReceipt && (
-                                                    <td className="py-4 px-4">
-                                                        <span className="text-cyan-400 font-mono text-sm">{row.reference_number || '—'}</span>
-                                                    </td>
-                                                )}
+                                                <td className="py-4 px-4">
+                                                    <span className="text-cyan-400 font-mono text-sm">{row.reference_number || '—'}</span>
+                                                </td>
                                                 <td className="py-4 px-4">
                                                     <div className="flex items-center gap-3">
                                                         <div className="p-2 bg-cyan-500/10 rounded-lg">
