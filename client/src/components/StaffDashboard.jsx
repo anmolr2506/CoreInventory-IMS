@@ -4,10 +4,12 @@ import {
     LogOut, BoxIcon, CheckCircle, ChevronDown
 } from 'lucide-react';
 import SettingsPage from './SettingsPage.jsx';
+import TransfersPage from './TransfersPage.jsx';
+import StockAdjustmentsPage from './StockAdjustmentsPage.jsx';
 
 const StaffDashboard = ({ username, onLogout }) => {
     const [activeTab, setActiveTab] = useState('inventory');
-    const [currentPage, setCurrentPage] = useState('dashboard'); // dashboard, settings
+    const [currentPage, setCurrentPage] = useState('dashboard'); // dashboard, settings, transfers, adjustments
     const [settingsOpen, setSettingsOpen] = useState(false);
     const [inventory, setInventory] = useState([]);
     const [transfers, setTransfers] = useState([]);
@@ -34,6 +36,22 @@ const StaffDashboard = ({ username, onLogout }) => {
     // If on settings page, show settings instead
     if (currentPage === 'settings') {
         return <SettingsPage username={username} onLogout={() => {
+            onLogout();
+            setCurrentPage('dashboard');
+        }} />;
+    }
+
+    // If on transfers page, show transfers instead
+    if (currentPage === 'transfers') {
+        return <TransfersPage username={username} onLogout={() => {
+            onLogout();
+            setCurrentPage('dashboard');
+        }} />;
+    }
+
+    // If on stock adjustments page, show adjustments instead
+    if (currentPage === 'adjustments') {
+        return <StockAdjustmentsPage username={username} onLogout={() => {
             onLogout();
             setCurrentPage('dashboard');
         }} />;
@@ -199,6 +217,8 @@ const StaffDashboard = ({ username, onLogout }) => {
                                         } else if (navItem === 'dashboard') {
                                             setCurrentPage('dashboard');
                                             setSettingsOpen(false);
+                                        } else if (navItem === 'operations') {
+                                            // Will be handled by dropdown
                                         }
                                     }}
                                     className={`px-6 py-3 font-semibold transition-colors ${
@@ -208,8 +228,34 @@ const StaffDashboard = ({ username, onLogout }) => {
                                     }`}
                                 >
                                     {navItem === 'move-history' ? 'Move History' : navItem.charAt(0).toUpperCase() + navItem.slice(1).replace('-', ' ')}
-                                    {navItem === 'settings' && <ChevronDown className="inline ml-2 w-4 h-4" />}
+                                    {(navItem === 'settings' || navItem === 'operations') && <ChevronDown className="inline ml-2 w-4 h-4" />}
                                 </button>
+
+                                {/* Operations Dropdown */}
+                                {navItem === 'operations' && (
+                                    <div className="absolute left-0 mt-0 w-56 bg-[#1a2741] border border-[#27354f] rounded-lg shadow-2xl z-50 overflow-hidden">
+                                        <button
+                                            onClick={() => {
+                                                setCurrentPage('transfers');
+                                                setSettingsOpen(false);
+                                            }}
+                                            className="w-full text-left px-6 py-4 transition-colors text-slate-300 hover:bg-[#27354f]"
+                                        >
+                                            <div className="font-semibold">Internal Transfers</div>
+                                            <div className="text-xs text-slate-500 mt-1">Move stock between warehouses</div>
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                setCurrentPage('adjustments');
+                                                setSettingsOpen(false);
+                                            }}
+                                            className="w-full text-left px-6 py-4 transition-colors border-t border-[#27354f] text-slate-300 hover:bg-[#27354f]"
+                                        >
+                                            <div className="font-semibold">Stock Adjustments</div>
+                                            <div className="text-xs text-slate-500 mt-1">Fix inventory count mismatches</div>
+                                        </button>
+                                    </div>
+                                )}
 
                                 {/* Settings Dropdown Overlay */}
                                 {navItem === 'settings' && settingsOpen && (

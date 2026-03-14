@@ -3,7 +3,7 @@ CREATE TABLE IF NOT EXISTS users (
     name VARCHAR(100) NOT NULL,
     email VARCHAR(150) NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,
-    role VARCHAR(30) NOT NULL CHECK (role IN ('manager','staff','admin')),
+    role VARCHAR(30) NOT NULL CHECK (role IN ('manager','staff','admin','pending_user')),
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -22,6 +22,21 @@ ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;
 
 ALTER TABLE users
 ADD COLUMN IF NOT EXISTS last_login TIMESTAMP;
+
+ALTER TABLE users
+ADD COLUMN IF NOT EXISTS is_approved BOOLEAN DEFAULT false;
+
+ALTER TABLE users
+ADD COLUMN IF NOT EXISTS approval_status VARCHAR(30) DEFAULT 'pending' CHECK (approval_status IN ('pending', 'approved', 'rejected'));
+
+ALTER TABLE users
+ADD COLUMN IF NOT EXISTS approved_by INT;
+
+ALTER TABLE users
+ADD COLUMN IF NOT EXISTS approved_at TIMESTAMP;
+
+ALTER TABLE users
+ADD COLUMN IF NOT EXISTS requested_role VARCHAR(30) NOT NULL DEFAULT 'staff' CHECK (requested_role IN ('manager', 'staff'));
 
 
 CREATE TABLE IF NOT EXISTS categories (

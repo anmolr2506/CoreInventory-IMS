@@ -9,6 +9,7 @@ const transferRoutes = require("./routes/transferRoutes");
 const approvalRoutes = require("./routes/approvalRoutes");
 const warehouseRoutes = require("./routes/warehouseRoutes");
 const locationRoutes = require("./routes/locationRoutes");
+const approvalUserRoutes = require("./routes/approvalUserRoutes");
 
 // Middleware
 app.use(express.json());
@@ -22,6 +23,7 @@ app.use("/", transferRoutes);
 app.use("/approval", approvalRoutes);
 app.use("/", warehouseRoutes);
 app.use("/", locationRoutes);
+app.use("/", approvalUserRoutes);
 
 app.listen(5000, () => {
     console.log("Server running on port 5000");

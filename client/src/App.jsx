@@ -7,6 +7,7 @@ import Dashboard from './components/Dashboard.jsx';
 import ManagerDashboard from './components/ManagerDashboard.jsx';
 import StaffDashboard from './components/StaffDashboard.jsx';
 import AdminDashboard from './components/AdminDashboard.jsx';
+import WaitingForApproval from './components/WaitingForApproval.jsx';
 import Sidebar from './components/Sidebar.jsx';
 import { ToastContainer } from 'react-toastify';
 import { Package, TrendingUp, Building2, FileText } from 'lucide-react';
@@ -18,15 +19,25 @@ function App() {
   const [showIntro, setShowIntro] = useState(false);
   const [username, setUsername] = useState('');
   const [userRole, setUserRole] = useState('');
+  const [isApproved, setIsApproved] = useState(true); // true by default for admins/managers
+  const [approvalStatus, setApprovalStatus] = useState('approved');
+  const [createdAt, setCreatedAt] = useState('');
 
   // Check for existing token on mount
   useEffect(() => {
     const token = localStorage.getItem('token');
     const savedUsername = localStorage.getItem('username');
     const savedRole = localStorage.getItem('role');
+    const savedApproved = localStorage.getItem('is_approved');
+    const savedStatus = localStorage.getItem('approval_status');
+    const savedCreatedAt = localStorage.getItem('created_at');
+    
     if (token && savedUsername) {
       setUsername(savedUsername);
       setUserRole(savedRole || 'staff');
+      setIsApproved(savedApproved === 'true');
+      setApprovalStatus(savedStatus || 'approved');
+      setCreatedAt(savedCreatedAt || '');
       setIsAuthenticated(true);
     }
   }, []);
@@ -35,11 +46,22 @@ function App() {
     // Can be either string (old way) or object (new way)
     const name = typeof userInfo === 'string' ? userInfo : userInfo.username;
     const role = typeof userInfo === 'string' ? localStorage.getItem('role') : userInfo.role;
+    const approved = typeof userInfo === 'object' ? userInfo.is_approved : localStorage.getItem('is_approved') === 'true';
+    const status = typeof userInfo === 'object' ? userInfo.approval_status : localStorage.getItem('approval_status') || 'approved';
+    const created = typeof userInfo === 'object' ? userInfo.created_at : localStorage.getItem('created_at') || '';
     
     setUsername(name);
     setUserRole(role || 'staff');
+    setIsApproved(approved);
+    setApprovalStatus(status);
+    setCreatedAt(created);
+    
     localStorage.setItem('username', name);
     localStorage.setItem('role', role || 'staff');
+    localStorage.setItem('is_approved', approved);
+    localStorage.setItem('approval_status', status);
+    if (created) localStorage.setItem('created_at', created);
+    
     setShowIntro(true);
   };
 
@@ -54,9 +76,15 @@ function App() {
     localStorage.removeItem('role');
     localStorage.removeItem('user_id');
     localStorage.removeItem('warehouses');
+    localStorage.removeItem('is_approved');
+    localStorage.removeItem('approval_status');
+    localStorage.removeItem('created_at');
     setIsAuthenticated(false);
     setUsername('');
     setUserRole('');
+    setIsApproved(true);
+    setApprovalStatus('approved');
+    setCreatedAt('');
     setAuthView('landing');
   };
 
@@ -65,8 +93,30 @@ function App() {
     return <NetflixIntro onComplete={handleIntroComplete} />;
   }
 
-  // Authenticated: Show Role-Based Dashboard
+  // Authenticated: Show Role-Based Dashboard or Waiting for Approval
   if (isAuthenticated) {
+    // Check if user is waiting for approval
+    if (!isApproved && approvalStatus === 'pending') {
+      return (
+        <>
+          <WaitingForApproval 
+            username={username} 
+            onLogout={handleLogout} 
+            createdAt={createdAt}
+          />
+          <ToastContainer
+            position="top-right"
+            autoClose={3000}
+            hideProgressBar={false}
+            newestOnTop={false}
+            closeOnClick
+            pauseOnHover
+            theme="colored"
+          />
+        </>
+      );
+    }
+
     let DashboardComponent;
     
     switch(userRole) {
