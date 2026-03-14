@@ -5,6 +5,7 @@ const cors = require("cors");
 const authRoutes = require("./routes/authRoutes");
 const dashboardRoutes = require("./routes/dashboardRoutes");
 const inventoryRoutes = require("./routes/inventoryRoutes");
+const productRoutes = require("./routes/productRoutes");
 const transferRoutes = require("./routes/transferRoutes");
 const approvalRoutes = require("./routes/approvalRoutes");
 
@@ -16,6 +17,7 @@ app.use(cors());
 app.use("/", authRoutes);
 app.use("/", dashboardRoutes);
 app.use("/", inventoryRoutes);
+app.use("/", productRoutes);
 app.use("/", transferRoutes);
 app.use("/approval", approvalRoutes);
 

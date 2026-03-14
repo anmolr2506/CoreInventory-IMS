@@ -54,6 +54,7 @@ CREATE TABLE IF NOT EXISTS inventory (
     product_id INT NOT NULL,
     warehouse_id INT NOT NULL,
     quantity INT NOT NULL DEFAULT 0 CHECK (quantity >= 0),
+    reserved_quantity INT NOT NULL DEFAULT 0 CHECK (reserved_quantity >= 0),
     last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT fk_inventory_product
@@ -69,6 +70,12 @@ CREATE TABLE IF NOT EXISTS inventory (
     CONSTRAINT unique_product_warehouse
         UNIQUE (product_id, warehouse_id)
 );
+
+ALTER TABLE inventory
+ADD COLUMN IF NOT EXISTS reserved_quantity INT NOT NULL DEFAULT 0;
+
+CREATE INDEX IF NOT EXISTS idx_inventory_product_warehouse
+ON inventory(product_id, warehouse_id);
 CREATE TABLE IF NOT EXISTS receipts (
     receipt_id SERIAL PRIMARY KEY,
     product_id INT NOT NULL,

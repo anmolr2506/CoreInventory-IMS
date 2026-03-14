@@ -74,7 +74,7 @@ const login = async (req, res) => {
         let warehouses = [];
         if (role === 'staff') {
             const warehouseResult = await pool.query(
-                "SELECT warehouse_id, w.name FROM warehouse_assignments wa JOIN warehouses w ON wa.warehouse_id = w.warehouse_id WHERE user_id = $1",
+                "SELECT wa.warehouse_id, w.name FROM warehouse_assignments wa JOIN warehouses w ON wa.warehouse_id = w.warehouse_id WHERE wa.user_id = $1",
                 [userId]
             );
             warehouses = warehouseResult.rows;

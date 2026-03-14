@@ -4,10 +4,8 @@ import Login from './components/login.jsx';
 import ForgotPassword from './components/forgotPassword.jsx';
 import NetflixIntro from './components/NetflixIntro.jsx';
 import Dashboard from './components/Dashboard.jsx';
-import ManagerDashboard from './components/ManagerDashboard.jsx';
-import StaffDashboard from './components/StaffDashboard.jsx';
-import AdminDashboard from './components/AdminDashboard.jsx';
 import Sidebar from './components/Sidebar.jsx';
+import StockScreen from './components/StockScreen.jsx';
 import { ToastContainer } from 'react-toastify';
 import { Package, TrendingUp, Building2, FileText } from 'lucide-react';
 import 'react-toastify/dist/ReactToastify.css';
@@ -18,6 +16,7 @@ function App() {
   const [showIntro, setShowIntro] = useState(false);
   const [username, setUsername] = useState('');
   const [userRole, setUserRole] = useState('');
+  const [activeView, setActiveView] = useState('dashboard');
 
   // Check for existing token on mount
   useEffect(() => {
@@ -38,6 +37,7 @@ function App() {
     
     setUsername(name);
     setUserRole(role || 'staff');
+    setActiveView('dashboard');
     localStorage.setItem('username', name);
     localStorage.setItem('role', role || 'staff');
     setShowIntro(true);
@@ -57,6 +57,7 @@ function App() {
     setIsAuthenticated(false);
     setUsername('');
     setUserRole('');
+    setActiveView('dashboard');
     setAuthView('landing');
   };
 
@@ -67,25 +68,39 @@ function App() {
 
   // Authenticated: Show Role-Based Dashboard
   if (isAuthenticated) {
-    let DashboardComponent;
-    
-    switch(userRole) {
-      case 'admin':
-        DashboardComponent = <AdminDashboard username={username} onLogout={handleLogout} />;
-        break;
-      case 'manager':
-        DashboardComponent = <ManagerDashboard username={username} onLogout={handleLogout} />;
-        break;
-      case 'staff':
-        DashboardComponent = <StaffDashboard username={username} onLogout={handleLogout} />;
-        break;
-      default:
-        DashboardComponent = <Dashboard username={username} />;
+    if (activeView === 'stock') {
+      return (
+        <>
+          <StockScreen
+            username={username}
+            role={userRole || 'staff'}
+            onLogout={handleLogout}
+            onNavigate={setActiveView}
+          />
+          <ToastContainer
+            position="top-right"
+            autoClose={3000}
+            hideProgressBar={false}
+            newestOnTop={false}
+            closeOnClick
+            pauseOnHover
+            theme="colored"
+          />
+        </>
+      );
     }
 
     return (
       <>
-        {DashboardComponent}
+        <div className="flex min-h-screen bg-[#0a0f1c] text-white">
+          <Sidebar
+            username={username}
+            activeItem={activeView}
+            onNavigate={setActiveView}
+            onLogout={handleLogout}
+          />
+          <Dashboard username={username} />
+        </div>
         <ToastContainer
           position="top-right"
           autoClose={3000}
