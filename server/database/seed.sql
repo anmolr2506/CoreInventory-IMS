@@ -81,3 +81,26 @@ VALUES
 (2,3,1200.00,3),
 (3,4,9000.00,10)
 ON CONFLICT DO NOTHING;
+
+-- =====================================
+-- ROLE PERMISSIONS SEED DATA
+-- =====================================
+
+INSERT INTO role_permissions (role, permission_name)
+VALUES
+('manager','create_receipt'),
+('manager','update_receipt'),
+('manager','create_delivery'),
+('manager','view_inventory'),
+('manager','view_analytics'),
+('manager','manage_products'),
+('manager','view_reports'),
+
+('staff','create_transfer'),
+('staff','perform_picking'),
+('staff','perform_shelving'),
+('staff','perform_counting'),
+('staff','view_assigned_warehouse_inventory'),
+
+('admin','full_access')
+ON CONFLICT DO NOTHING;

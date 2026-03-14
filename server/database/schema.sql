@@ -6,6 +6,24 @@ CREATE TABLE IF NOT EXISTS users (
     role VARCHAR(30) NOT NULL CHECK (role IN ('manager','staff','admin')),
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+-- =====================================
+-- USERS TABLE EXTRA COLUMNS
+-- =====================================
+
+ALTER TABLE users
+ADD COLUMN IF NOT EXISTS reset_otp VARCHAR(10);
+
+ALTER TABLE users
+ADD COLUMN IF NOT EXISTS reset_otp_expiry TIMESTAMP;
+
+ALTER TABLE users
+ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;
+
+ALTER TABLE users
+ADD COLUMN IF NOT EXISTS last_login TIMESTAMP;
+
+
 CREATE TABLE IF NOT EXISTS categories (
     category_id SERIAL PRIMARY KEY,
     name VARCHAR(100) NOT NULL UNIQUE,
@@ -72,6 +90,17 @@ CREATE TABLE IF NOT EXISTS receipts (
         FOREIGN KEY (received_by)
         REFERENCES users(user_id)
 );
+
+ALTER TABLE receipts
+ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'pending';
+
+ALTER TABLE deliveries
+ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'pending';
+
+ALTER TABLE transfers
+ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'pending';
+
+
 CREATE TABLE IF NOT EXISTS deliveries (
     delivery_id SERIAL PRIMARY KEY,
     product_id INT NOT NULL,
@@ -182,4 +211,38 @@ CREATE TABLE IF NOT EXISTS supplier_products (
     lead_time_days INT,
 
     PRIMARY KEY (supplier_id, product_id)
+);
+
+-- =====================================
+-- ROLE PERMISSIONS
+-- =====================================
+
+CREATE TABLE IF NOT EXISTS role_permissions (
+    permission_id SERIAL PRIMARY KEY,
+    role VARCHAR(30) NOT NULL,
+    permission_name VARCHAR(100) NOT NULL UNIQUE,
+    description TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- =====================================
+-- WAREHOUSE ASSIGNMENTS
+-- =====================================
+
+CREATE TABLE IF NOT EXISTS warehouse_assignments (
+    assignment_id SERIAL PRIMARY KEY,
+    user_id INT NOT NULL,
+    warehouse_id INT NOT NULL,
+    assigned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_assignment_user
+    FOREIGN KEY (user_id)
+    REFERENCES users(user_id) ON DELETE CASCADE,
+
+    CONSTRAINT fk_assignment_warehouse
+    FOREIGN KEY (warehouse_id)
+    REFERENCES warehouses(warehouse_id) ON DELETE CASCADE,
+
+    CONSTRAINT unique_user_warehouse
+    UNIQUE (user_id, warehouse_id)
 );
