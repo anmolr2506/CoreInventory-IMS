@@ -29,11 +29,11 @@ ON CONFLICT (name) DO NOTHING;
 -- WAREHOUSES
 -- ================================
 
-INSERT INTO warehouses (name, location)
+INSERT INTO warehouses (name, short_code, location)
 VALUES
-('Main Warehouse','Building A'),
-('Production Floor','Building B'),
-('Secondary Warehouse','Building C')
+('Main Warehouse','MAIN','Building A'),
+('Production Floor','PROD','Building B'),
+('Secondary Warehouse','SEC','Building C')
 ON CONFLICT (name) DO NOTHING;
 
 
