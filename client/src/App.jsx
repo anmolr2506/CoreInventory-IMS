@@ -7,6 +7,7 @@ import NetflixIntro from './components/NetflixIntro.jsx';
 import Dashboard from './components/Dashboard.jsx';
 import OperationsScreen from './components/OperationsScreen.jsx';
 import NewReceiptScreen from './components/NewReceiptScreen.jsx';
+import NewDeliveryScreen from './components/NewDeliveryScreen.jsx';
 import Sidebar from './components/Sidebar.jsx';
 import StockScreen from './components/StockScreen.jsx';
 import { ToastContainer } from 'react-toastify';
@@ -17,7 +18,7 @@ function AuthenticatedLayout({ username, onLogout }) {
   const navigate = useNavigate();
   const location = useLocation();
   const path = location.pathname;
-  const activeItem = path === '/receipt' || path === '/operation/new' ? 'operations' : path === '/delivery' ? 'delivery' : 'dashboard';
+  const activeItem = path === '/receipt' || path === '/operation/new' ? 'operations' : path.startsWith('/delivery') ? 'delivery' : 'dashboard';
 
   return (
     <div className="flex min-h-screen w-full bg-[#0a0f1c] text-slate-300 animate-[fade-in_0.8s_ease-out]">
@@ -46,7 +47,7 @@ function AuthenticatedLayout({ username, onLogout }) {
               title="Delivery"
               subtitle="Manage outgoing shipments"
               accentColor="text-purple-400"
-              onNewClick={() => navigate('/operation/new')}
+              onNewClick={() => navigate('/delivery/new')}
               onBack={() => navigate('/')}
             />
           }
@@ -54,6 +55,10 @@ function AuthenticatedLayout({ username, onLogout }) {
         <Route
           path="/operation/new"
           element={<NewReceiptScreen onBack={() => navigate('/')} />}
+        />
+        <Route
+          path="/delivery/new"
+          element={<NewDeliveryScreen onBack={() => navigate('/delivery')} />}
         />
       </Routes>
     </div>

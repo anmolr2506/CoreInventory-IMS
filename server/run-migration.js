@@ -7,6 +7,8 @@ const migrations = [
   "add_status_columns.sql",
   "receipt_schema_update.sql",
   "update_receipt_trigger.sql",
+  "delivery_schema_update.sql",
+  "update_delivery_trigger.sql",
 ];
 
 (async () => {
