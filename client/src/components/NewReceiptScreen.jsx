@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
     ChevronLeft, Plus, CheckCircle2, FileDown, X, Trash2
 } from 'lucide-react';
@@ -23,24 +23,43 @@ const NewReceiptScreen = ({ onBack }) => {
     const [generatedData, setGeneratedData] = useState(null);
     const [validating, setValidating] = useState(false);
     const [generating, setGenerating] = useState(false);
+    const [showSupplierModal, setShowSupplierModal] = useState(false);
+    const [showProductModal, setShowProductModal] = useState(false);
+    const [supplierForm, setSupplierForm] = useState({
+        name: '',
+        contact_person: '',
+        email: '',
+        phone: '',
+        address: ''
+    });
+    const [productForm, setProductForm] = useState({
+        name: '',
+        sku: '',
+        unit: '',
+        category_name: '',
+        reorder_level: '',
+        initial_stock: '',
+        warehouse_id: ''
+    });
+
+    const fetchDropdowns = useCallback(async () => {
+        try {
+            const token = localStorage.getItem('token');
+            const res = await fetch(`${API_BASE}/api/receipts/dropdowns`, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            const data = await res.json();
+            setDropdowns(data);
+        } catch (err) {
+            toast.error('Failed to load dropdowns');
+        } finally {
+            setLoading(false);
+        }
+    }, []);
 
     useEffect(() => {
-        const fetchDropdowns = async () => {
-            try {
-                const token = localStorage.getItem('token');
-                const res = await fetch(`${API_BASE}/api/receipts/dropdowns`, {
-                    headers: { Authorization: `Bearer ${token}` },
-                });
-                const data = await res.json();
-                setDropdowns(data);
-            } catch (err) {
-                toast.error('Failed to load dropdowns');
-            } finally {
-                setLoading(false);
-            }
-        };
         fetchDropdowns();
-    }, []);
+    }, [fetchDropdowns]);
 
     const updateForm = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -241,6 +260,84 @@ const NewReceiptScreen = ({ onBack }) => {
         setForm((f) => ({ ...f, supplier_id: '', warehouse_id: '', responsible_id: '' }));
     };
 
+    const handleSaveSupplier = async () => {
+        if (!supplierForm.name.trim()) {
+            toast.error('Supplier name is required');
+            return;
+        }
+        try {
+            const token = localStorage.getItem('token');
+            const res = await fetch(`${API_BASE}/suppliers`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify(supplierForm)
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                toast.error(data || 'Failed to save supplier');
+                return;
+            }
+            toast.success('Supplier saved');
+            setShowSupplierModal(false);
+            setSupplierForm({
+                name: '',
+                contact_person: '',
+                email: '',
+                phone: '',
+                address: ''
+            });
+            setLoading(true);
+            fetchDropdowns();
+        } catch (err) {
+            toast.error('Failed to save supplier');
+        }
+    };
+
+    const handleSaveProduct = async () => {
+        if (!productForm.name.trim() || !productForm.sku.trim() || !productForm.unit.trim() || !productForm.category_name.trim()) {
+            toast.error('Name, SKU, Unit and Category are required');
+            return;
+        }
+        try {
+            const token = localStorage.getItem('token');
+            const res = await fetch(`${API_BASE}/products`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    ...productForm,
+                    reorder_level: productForm.reorder_level || 0,
+                    initial_stock: productForm.initial_stock || 0
+                })
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                toast.error(data || 'Failed to save product');
+                return;
+            }
+            toast.success('Product saved');
+            setShowProductModal(false);
+            setProductForm({
+                name: '',
+                sku: '',
+                unit: '',
+                category_name: '',
+                reorder_level: '',
+                initial_stock: '',
+                warehouse_id: ''
+            });
+            setLoading(true);
+            fetchDropdowns();
+        } catch (err) {
+            toast.error('Failed to save product');
+        }
+    };
+
     if (loading) {
         return (
             <div className="flex-1 flex items-center justify-center bg-[#0a0f1c]">
@@ -323,7 +420,16 @@ const NewReceiptScreen = ({ onBack }) => {
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
-                            <label className="block text-sm text-slate-400 mb-2">Receive From (Supplier)</label>
+                            <div className="flex items-center justify-between mb-2">
+                                <label className="block text-sm text-slate-400">Receive From (Supplier)</label>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowSupplierModal(true)}
+                                    className="text-xs px-2 py-1 rounded-lg bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/30 cursor-pointer"
+                                >
+                                    + Add Supplier
+                                </button>
+                            </div>
                             <select
                                 value={form.supplier_id}
                                 onChange={(e) => updateForm('supplier_id', e.target.value)}
@@ -372,8 +478,8 @@ const NewReceiptScreen = ({ onBack }) => {
                         </div>
                     </div>
 
-                    <div>
-                        <label className="block text-sm text-slate-400 mb-2">Warehouse (To)</label>
+                        <div>
+                            <label className="block text-sm text-slate-400 mb-2">Warehouse (To)</label>
                         <select
                             value={form.warehouse_id}
                             onChange={(e) => updateForm('warehouse_id', e.target.value)}
@@ -394,10 +500,24 @@ const NewReceiptScreen = ({ onBack }) => {
                         <div className="flex items-center justify-between mb-4">
                             <h3 className="text-base font-semibold text-white">Products</h3>
                             {status !== 'Done' && (
-                                <button onClick={addLine} className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-cyan-500/20 text-cyan-400 text-sm hover:bg-cyan-500/30 cursor-pointer">
-                                    <Plus className="w-4 h-4" />
-                                    Add Product
-                                </button>
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowProductModal(true)}
+                                        className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 text-xs hover:bg-emerald-500/30 cursor-pointer"
+                                    >
+                                        <Plus className="w-3 h-3" />
+                                        New Product
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={addLine}
+                                        className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-cyan-500/20 text-cyan-400 text-sm hover:bg-cyan-500/30 cursor-pointer"
+                                    >
+                                        <Plus className="w-4 h-4" />
+                                        Add Line
+                                    </button>
+                                </div>
                             )}
                         </div>
 
@@ -487,6 +607,197 @@ const NewReceiptScreen = ({ onBack }) => {
                     </div>
                 </div>
             </div>
+            {/* Supplier Modal */}
+            {showSupplierModal && (
+                <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/60">
+                    <div className="w-full max-w-lg bg-[#111827] border border-[#1e293b] rounded-2xl p-6 shadow-2xl">
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-lg font-semibold text-white">Add Supplier</h3>
+                            <button
+                                onClick={() => setShowSupplierModal(false)}
+                                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-[#1e293b] cursor-pointer"
+                            >
+                                <X className="w-4 h-4" />
+                            </button>
+                        </div>
+                        <div className="space-y-3">
+                            <div>
+                                <label className="block text-xs text-slate-400 mb-1">Name *</label>
+                                <input
+                                    type="text"
+                                    value={supplierForm.name}
+                                    onChange={(e) => setSupplierForm((f) => ({ ...f, name: e.target.value }))}
+                                    className="w-full px-3 py-2 bg-[#1e293b] border border-[#334155] rounded-lg text-sm text-white"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs text-slate-400 mb-1">Contact Person</label>
+                                <input
+                                    type="text"
+                                    value={supplierForm.contact_person}
+                                    onChange={(e) => setSupplierForm((f) => ({ ...f, contact_person: e.target.value }))}
+                                    className="w-full px-3 py-2 bg-[#1e293b] border border-[#334155] rounded-lg text-sm text-white"
+                                />
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-xs text-slate-400 mb-1">Email</label>
+                                    <input
+                                        type="email"
+                                        value={supplierForm.email}
+                                        onChange={(e) => setSupplierForm((f) => ({ ...f, email: e.target.value }))}
+                                        className="w-full px-3 py-2 bg-[#1e293b] border border-[#334155] rounded-lg text-sm text-white"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs text-slate-400 mb-1">Phone</label>
+                                    <input
+                                        type="text"
+                                        value={supplierForm.phone}
+                                        onChange={(e) => setSupplierForm((f) => ({ ...f, phone: e.target.value }))}
+                                        className="w-full px-3 py-2 bg-[#1e293b] border border-[#334155] rounded-lg text-sm text-white"
+                                    />
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-xs text-slate-400 mb-1">Address</label>
+                                <textarea
+                                    rows={2}
+                                    value={supplierForm.address}
+                                    onChange={(e) => setSupplierForm((f) => ({ ...f, address: e.target.value }))}
+                                    className="w-full px-3 py-2 bg-[#1e293b] border border-[#334155] rounded-lg text-sm text-white"
+                                />
+                            </div>
+                        </div>
+                        <div className="mt-5 flex justify-end gap-2">
+                            <button
+                                onClick={() => setShowSupplierModal(false)}
+                                className="px-4 py-2 text-sm rounded-lg bg-transparent border border-[#334155] text-slate-300 hover:bg-[#1e293b] cursor-pointer"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleSaveSupplier}
+                                className="px-4 py-2 text-sm rounded-lg bg-cyan-600 hover:bg-cyan-700 text-white cursor-pointer"
+                            >
+                                Save Supplier
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Product Modal */}
+            {showProductModal && (
+                <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/60">
+                    <div className="w-full max-w-xl bg-[#111827] border border-[#1e293b] rounded-2xl p-6 shadow-2xl">
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-lg font-semibold text-white">Add Product</h3>
+                            <button
+                                onClick={() => setShowProductModal(false)}
+                                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-[#1e293b] cursor-pointer"
+                            >
+                                <X className="w-4 h-4" />
+                            </button>
+                        </div>
+                        <div className="space-y-3">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-xs text-slate-400 mb-1">Name *</label>
+                                    <input
+                                        type="text"
+                                        value={productForm.name}
+                                        onChange={(e) => setProductForm((f) => ({ ...f, name: e.target.value }))}
+                                        className="w-full px-3 py-2 bg-[#1e293b] border border-[#334155] rounded-lg text-sm text-white"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs text-slate-400 mb-1">SKU *</label>
+                                    <input
+                                        type="text"
+                                        value={productForm.sku}
+                                        onChange={(e) => setProductForm((f) => ({ ...f, sku: e.target.value }))}
+                                        className="w-full px-3 py-2 bg-[#1e293b] border border-[#334155] rounded-lg text-sm text-white"
+                                    />
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-xs text-slate-400 mb-1">Unit *</label>
+                                    <input
+                                        type="text"
+                                        value={productForm.unit}
+                                        onChange={(e) => setProductForm((f) => ({ ...f, unit: e.target.value }))}
+                                        placeholder="kg, units, pcs..."
+                                        className="w-full px-3 py-2 bg-[#1e293b] border border-[#334155] rounded-lg text-sm text-white"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs text-slate-400 mb-1">Category *</label>
+                                    <input
+                                        type="text"
+                                        value={productForm.category_name}
+                                        onChange={(e) => setProductForm((f) => ({ ...f, category_name: e.target.value }))}
+                                        placeholder="e.g. Raw Material"
+                                        className="w-full px-3 py-2 bg-[#1e293b] border border-[#334155] rounded-lg text-sm text-white"
+                                    />
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                <div>
+                                    <label className="block text-xs text-slate-400 mb-1">Reorder Level</label>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        value={productForm.reorder_level}
+                                        onChange={(e) => setProductForm((f) => ({ ...f, reorder_level: e.target.value }))}
+                                        className="w-full px-3 py-2 bg-[#1e293b] border border-[#334155] rounded-lg text-sm text-white"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs text-slate-400 mb-1">Initial Stock</label>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        value={productForm.initial_stock}
+                                        onChange={(e) => setProductForm((f) => ({ ...f, initial_stock: e.target.value }))}
+                                        className="w-full px-3 py-2 bg-[#1e293b] border border-[#334155] rounded-lg text-sm text-white"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs text-slate-400 mb-1">Warehouse</label>
+                                    <select
+                                        value={productForm.warehouse_id}
+                                        onChange={(e) => setProductForm((f) => ({ ...f, warehouse_id: e.target.value }))}
+                                        className="w-full px-3 py-2 bg-[#1e293b] border border-[#334155] rounded-lg text-sm text-white"
+                                    >
+                                        <option value="">Select</option>
+                                        {dropdowns.warehouses.map((w) => (
+                                            <option key={w.warehouse_id} value={w.warehouse_id}>
+                                                {w.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="mt-5 flex justify-end gap-2">
+                            <button
+                                onClick={() => setShowProductModal(false)}
+                                className="px-4 py-2 text-sm rounded-lg bg-transparent border border-[#334155] text-slate-300 hover:bg-[#1e293b] cursor-pointer"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleSaveProduct}
+                                className="px-4 py-2 text-sm rounded-lg bg-cyan-600 hover:bg-cyan-700 text-white cursor-pointer"
+                            >
+                                Save Product
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

@@ -23,6 +23,16 @@ const NewDeliveryScreen = ({ onBack }) => {
     const [generatedData, setGeneratedData] = useState(null);
     const [validating, setValidating] = useState(false);
     const [generating, setGenerating] = useState(false);
+    const [showProductModal, setShowProductModal] = useState(false);
+    const [productForm, setProductForm] = useState({
+        name: '',
+        sku: '',
+        unit: '',
+        category_name: '',
+        reorder_level: '',
+        initial_stock: '',
+        warehouse_id: ''
+    });
 
     useEffect(() => {
         const fetchDropdowns = async () => {
@@ -237,6 +247,60 @@ const NewDeliveryScreen = ({ onBack }) => {
         setForm((f) => ({ ...f, customer_name: '', warehouse_id: '', responsible_id: '' }));
     };
 
+    const handleSaveProduct = async () => {
+        if (!productForm.name.trim() || !productForm.sku.trim() || !productForm.unit.trim() || !productForm.category_name.trim()) {
+            toast.error('Name, SKU, Unit and Category are required');
+            return;
+        }
+        try {
+            const token = localStorage.getItem('token');
+            const res = await fetch(`${API_BASE}/products`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    ...productForm,
+                    reorder_level: productForm.reorder_level || 0,
+                    initial_stock: productForm.initial_stock || 0
+                })
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                toast.error(data || 'Failed to save product');
+                return;
+            }
+            toast.success('Product saved');
+            setShowProductModal(false);
+            setProductForm({
+                name: '',
+                sku: '',
+                unit: '',
+                category_name: '',
+                reorder_level: '',
+                initial_stock: '',
+                warehouse_id: ''
+            });
+            // refresh dropdowns
+            setLoading(true);
+            try {
+                const token2 = localStorage.getItem('token');
+                const res2 = await fetch(`${API_BASE}/api/deliveries/dropdowns`, {
+                    headers: { Authorization: `Bearer ${token2}` },
+                });
+                const data2 = await res2.json();
+                setDropdowns(data2);
+            } catch {
+                toast.error('Failed to refresh products');
+            } finally {
+                setLoading(false);
+            }
+        } catch (err) {
+            toast.error('Failed to save product');
+        }
+    };
+
     if (loading) {
         return (
             <div className="flex-1 flex items-center justify-center bg-[#0a0f1c]">
@@ -376,10 +440,24 @@ const NewDeliveryScreen = ({ onBack }) => {
                         <div className="flex items-center justify-between mb-4">
                             <h3 className="text-base font-semibold text-white">Products</h3>
                             {status !== 'Done' && (
-                                <button onClick={addLine} className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-cyan-500/20 text-cyan-400 text-sm hover:bg-cyan-500/30 cursor-pointer">
-                                    <Plus className="w-4 h-4" />
-                                    Add Product
-                                </button>
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowProductModal(true)}
+                                        className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 text-xs hover:bg-emerald-500/30 cursor-pointer"
+                                    >
+                                        <Plus className="w-3 h-3" />
+                                        New Product
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={addLine}
+                                        className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-cyan-500/20 text-cyan-400 text-sm hover:bg-cyan-500/30 cursor-pointer"
+                                    >
+                                        <Plus className="w-4 h-4" />
+                                        Add Line
+                                    </button>
+                                </div>
                             )}
                         </div>
 
@@ -468,6 +546,117 @@ const NewDeliveryScreen = ({ onBack }) => {
                     </div>
                 </div>
             </div>
+            {/* Product Modal */}
+            {showProductModal && (
+                <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/60">
+                    <div className="w-full max-w-xl bg-[#111827] border border-[#1e293b] rounded-2xl p-6 shadow-2xl">
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-lg font-semibold text-white">Add Product</h3>
+                            <button
+                                onClick={() => setShowProductModal(false)}
+                                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-[#1e293b] cursor-pointer"
+                            >
+                                <X className="w-4 h-4" />
+                            </button>
+                        </div>
+                        <div className="space-y-3">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-xs text-slate-400 mb-1">Name *</label>
+                                    <input
+                                        type="text"
+                                        value={productForm.name}
+                                        onChange={(e) => setProductForm((f) => ({ ...f, name: e.target.value }))}
+                                        className="w-full px-3 py-2 bg-[#1e293b] border border-[#334155] rounded-lg text-sm text-white"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs text-slate-400 mb-1">SKU *</label>
+                                    <input
+                                        type="text"
+                                        value={productForm.sku}
+                                        onChange={(e) => setProductForm((f) => ({ ...f, sku: e.target.value }))}
+                                        className="w-full px-3 py-2 bg-[#1e293b] border border-[#334155] rounded-lg text-sm text-white"
+                                    />
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-xs text-slate-400 mb-1">Unit *</label>
+                                    <input
+                                        type="text"
+                                        value={productForm.unit}
+                                        onChange={(e) => setProductForm((f) => ({ ...f, unit: e.target.value }))}
+                                        placeholder="kg, units, pcs..."
+                                        className="w-full px-3 py-2 bg-[#1e293b] border border-[#334155] rounded-lg text-sm text-white"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs text-slate-400 mb-1">Category *</label>
+                                    <input
+                                        type="text"
+                                        value={productForm.category_name}
+                                        onChange={(e) => setProductForm((f) => ({ ...f, category_name: e.target.value }))}
+                                        placeholder="e.g. Finished Goods"
+                                        className="w-full px-3 py-2 bg-[#1e293b] border border-[#334155] rounded-lg text-sm text-white"
+                                    />
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                <div>
+                                    <label className="block text-xs text-slate-400 mb-1">Reorder Level</label>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        value={productForm.reorder_level}
+                                        onChange={(e) => setProductForm((f) => ({ ...f, reorder_level: e.target.value }))}
+                                        className="w-full px-3 py-2 bg-[#1e293b] border border-[#334155] rounded-lg text-sm text-white"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs text-slate-400 mb-1">Initial Stock</label>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        value={productForm.initial_stock}
+                                        onChange={(e) => setProductForm((f) => ({ ...f, initial_stock: e.target.value }))}
+                                        className="w-full px-3 py-2 bg-[#1e293b] border border-[#334155] rounded-lg text-sm text-white"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs text-slate-400 mb-1">Warehouse</label>
+                                    <select
+                                        value={productForm.warehouse_id}
+                                        onChange={(e) => setProductForm((f) => ({ ...f, warehouse_id: e.target.value }))}
+                                        className="w-full px-3 py-2 bg-[#1e293b] border border-[#334155] rounded-lg text-sm text-white"
+                                    >
+                                        <option value="">Select</option>
+                                        {dropdowns.warehouses.map((w) => (
+                                            <option key={w.warehouse_id} value={w.warehouse_id}>
+                                                {w.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="mt-5 flex justify-end gap-2">
+                            <button
+                                onClick={() => setShowProductModal(false)}
+                                className="px-4 py-2 text-sm rounded-lg bg-transparent border border-[#334155] text-slate-300 hover:bg-[#1e293b] cursor-pointer"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleSaveProduct}
+                                className="px-4 py-2 text-sm rounded-lg bg-cyan-600 hover:bg-cyan-700 text-white cursor-pointer"
+                            >
+                                Save Product
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

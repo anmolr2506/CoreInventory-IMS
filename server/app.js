@@ -15,6 +15,7 @@ const approvalRoutes = require("./routes/approvalRoutes");
 const approvalUserRoutes = require("./routes/approvalUserRoutes");
 const ledgerRoutes = require("./routes/ledgerRoutes");
 const syncRoutes = require("./routes/syncRoutes");
+const supplierRoutes = require("./routes/supplierRoutes");
 
 const app = express();
 
@@ -36,6 +37,7 @@ app.use("/", locationRoutes);
 app.use("/", transferRoutes);
 app.use("/", ledgerRoutes);
 app.use("/", syncRoutes);
+app.use("/", supplierRoutes);
 
 module.exports = app;
 
