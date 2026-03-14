@@ -7,12 +7,13 @@ const Signup = ({ onToggleForm, onSignupSuccess }) => {
         username: "",
         email: "",
         password: "",
-        confirm_password: ""
+        confirm_password: "",
+        requested_role: "staff"
     });
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-    const { username, email, password, confirm_password } = inputs;
+    const { username, email, password, confirm_password, requested_role } = inputs;
 
     const onChange = (e) => setInputs({ ...inputs, [e.target.name]: e.target.value });
 
@@ -22,7 +23,7 @@ const Signup = ({ onToggleForm, onSignupSuccess }) => {
             return toast.error("Passwords do not match!");
         }
         try {
-            const body = { username, email, password };
+            const body = { username, email, password, requested_role };
             const response = await fetch("http://localhost:5000/signup", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -73,6 +74,20 @@ const Signup = ({ onToggleForm, onSignupSuccess }) => {
                         className="w-full px-4 py-3 bg-[#0f172a] border border-[#334155] text-white rounded-xl focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 outline-none transition-all placeholder:text-slate-500"
                         required
                     />
+                </div>
+
+                <div className="space-y-2">
+                    <label className="text-sm font-semibold text-slate-300">Register As</label>
+                    <select
+                        name="requested_role"
+                        value={requested_role}
+                        onChange={onChange}
+                        className="w-full px-4 py-3 bg-[#0f172a] border border-[#334155] text-white rounded-xl focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 outline-none transition-all"
+                        required
+                    >
+                        <option value="staff">Staff</option>
+                        <option value="manager">Manager</option>
+                    </select>
                 </div>
 
                 <div className="space-y-2">

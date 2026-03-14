@@ -1,5 +1,6 @@
 const router = require("express").Router();
 const authorizeToken = require("../middleware/authMiddleware");
+const requireApprovedUser = require("../middleware/requireApprovedUser");
 const { checkRole } = require("../middleware/roleAuthorization");
 const {
     getPendingApprovals,
@@ -26,7 +27,7 @@ router.get("/user/approval-status", authorizeToken, async (req, res) => {
 });
 
 // Get pending approval requests (managers and admins)
-router.get("/approvals/pending", authorizeToken, checkRole(['manager', 'admin']), async (req, res) => {
+router.get("/approvals/pending", authorizeToken, requireApprovedUser, checkRole(['manager', 'admin']), async (req, res) => {
     try {
         await getPendingApprovals(req, res);
     } catch (err) {
@@ -35,7 +36,7 @@ router.get("/approvals/pending", authorizeToken, checkRole(['manager', 'admin'])
 });
 
 // Approve a user (managers and admins)
-router.post("/approval/:user_id/approve", authorizeToken, checkRole(['manager', 'admin']), async (req, res) => {
+router.post("/approval/:user_id/approve", authorizeToken, requireApprovedUser, checkRole(['manager', 'admin']), async (req, res) => {
     try {
         await approveUser(req, res);
     } catch (err) {
@@ -44,7 +45,7 @@ router.post("/approval/:user_id/approve", authorizeToken, checkRole(['manager', 
 });
 
 // Reject a user (managers and admins)
-router.post("/approval/:user_id/reject", authorizeToken, checkRole(['manager', 'admin']), async (req, res) => {
+router.post("/approval/:user_id/reject", authorizeToken, requireApprovedUser, checkRole(['manager', 'admin']), async (req, res) => {
     try {
         await rejectUser(req, res);
     } catch (err) {
@@ -53,7 +54,7 @@ router.post("/approval/:user_id/reject", authorizeToken, checkRole(['manager', '
 });
 
 // Get all users with approval status (admin only)
-router.get("/users/all", authorizeToken, checkRole('admin'), async (req, res) => {
+router.get("/users/all", authorizeToken, requireApprovedUser, checkRole('admin'), async (req, res) => {
     try {
         await getAllUsersWithStatus(req, res);
     } catch (err) {

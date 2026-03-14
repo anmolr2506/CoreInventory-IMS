@@ -23,6 +23,11 @@ ON stock_ledger(operation_type);
 CREATE INDEX IF NOT EXISTS idx_ledger_time
 ON stock_ledger(created_at);
 
+-- Idempotency: prevent duplicate ledger inserts per business event
+CREATE UNIQUE INDEX IF NOT EXISTS uq_stock_ledger_idempotency_key
+ON stock_ledger(idempotency_key)
+WHERE idempotency_key IS NOT NULL;
+
 CREATE INDEX IF NOT EXISTS idx_products_sku
 ON products(sku);
 

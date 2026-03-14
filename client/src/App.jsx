@@ -9,6 +9,8 @@ import OperationsScreen from './components/OperationsScreen.jsx';
 import NewReceiptScreen from './components/NewReceiptScreen.jsx';
 import Sidebar from './components/Sidebar.jsx';
 import StockScreen from './components/StockScreen.jsx';
+import WaitingForApproval from './components/WaitingForApproval.jsx';
+import SettingsScreen from './components/SettingsScreen.jsx';
 import { ToastContainer } from 'react-toastify';
 import { Package, TrendingUp, Building2, FileText } from 'lucide-react';
 import 'react-toastify/dist/ReactToastify.css';
@@ -66,6 +68,9 @@ function App() {
   const [showIntro, setShowIntro] = useState(false);
   const [username, setUsername] = useState('');
   const [userRole, setUserRole] = useState('');
+  const [isApproved, setIsApproved] = useState(true);
+  const [approvalStatus, setApprovalStatus] = useState('approved');
+  const [createdAt, setCreatedAt] = useState('');
   const [activeView, setActiveView] = useState('dashboard');
 
   // Check for existing token on mount
@@ -97,6 +102,9 @@ function App() {
     
     setUsername(name);
     setUserRole(role || 'staff');
+    setIsApproved(Boolean(approved));
+    setApprovalStatus(status || 'approved');
+    setCreatedAt(created || '');
     setActiveView('dashboard');
     localStorage.setItem('username', name);
     localStorage.setItem('role', role || 'staff');
@@ -135,6 +143,23 @@ function App() {
 
   // Authenticated: Show Role-Based Dashboard or Waiting for Approval
   if (isAuthenticated) {
+    if (!isApproved || approvalStatus !== 'approved') {
+      return (
+        <>
+          <WaitingForApproval username={username} onLogout={handleLogout} createdAt={createdAt} />
+          <ToastContainer
+            position="top-right"
+            autoClose={3000}
+            hideProgressBar={false}
+            newestOnTop={false}
+            closeOnClick
+            pauseOnHover
+            theme="colored"
+          />
+        </>
+      );
+    }
+
     if (activeView === 'stock') {
       return (
         <>
@@ -162,11 +187,16 @@ function App() {
         <div className="flex min-h-screen bg-[#0a0f1c] text-white">
           <Sidebar
             username={username}
+            role={userRole || 'staff'}
             activeItem={activeView}
-            onNavigate={setActiveView}
+            onNav={setActiveView}
             onLogout={handleLogout}
           />
-          <Dashboard username={username} />
+          {activeView === 'settings' ? (
+            <SettingsScreen username={username} userRole={userRole || 'staff'} />
+          ) : (
+            <Dashboard username={username} />
+          )}
         </div>
         <ToastContainer
           position="top-right"

@@ -1,5 +1,6 @@
 const pool = require("../db");
 const { logOperation } = require("../utils/auditLog");
+const { enqueueEvent } = require("../utils/outbox");
 
 /**
  * Approval Controller
@@ -125,6 +126,14 @@ const approveUser = async (req, res) => {
             assigned_role: approvedUser.role
         }, user_id);
 
+        await enqueueEvent("USER_APPROVAL", {
+            user_id: approvedUser.user_id,
+            approval_status: "approved",
+            assigned_role: approvedUser.role,
+            approved_by: approverId,
+            approved_at: approvedUser.approved_at
+        });
+
         await client.query("COMMIT");
 
         res.json({
@@ -202,6 +211,14 @@ const rejectUser = async (req, res) => {
             requested_role: userToReject.requested_role,
             reason: reason || 'No reason provided'
         }, user_id);
+
+        await enqueueEvent("USER_APPROVAL", {
+            user_id: userToReject.user_id,
+            approval_status: "rejected",
+            assigned_role: null,
+            approved_by: approverId,
+            approved_at: updateResult.rows[0]?.approved_at
+        });
 
         await client.query("COMMIT");
 

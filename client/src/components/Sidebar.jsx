@@ -19,12 +19,12 @@ const navItems = [
     { id: 'settings', label: 'Settings', icon: Settings, path: '/settings', description: 'Configure system preferences, user roles, and notification settings.' },
 ];
 
-const Sidebar = ({ username, activeItem = 'dashboard', onLogout, onNav }) => {
+const Sidebar = ({ username, role = 'staff', activeItem = 'dashboard', onLogout, onNav }) => {
 
     const handleNavClick = (item) => {
-        const appPaths = ['/', '/dashboard', '/receipt', '/delivery', '/operation/new'];
-        if (onNav && item.path && appPaths.includes(item.path)) {
-            onNav(item.path);
+        const inAppViews = new Set(['dashboard', 'stock', 'settings']);
+        if (onNav && inAppViews.has(item.id)) {
+            onNav(item.id);
             return;
         }
         const pageContent = `
@@ -153,7 +153,7 @@ const Sidebar = ({ username, activeItem = 'dashboard', onLogout, onNav }) => {
                             <p className="text-sm font-semibold text-white truncate max-w-[120px]">
                                 {username || 'User'}
                             </p>
-                            <p className="text-xs text-slate-500">Administrator</p>
+                            <p className="text-xs text-slate-500">{(role || 'staff').toUpperCase()}</p>
                         </div>
                     </div>
                     <button

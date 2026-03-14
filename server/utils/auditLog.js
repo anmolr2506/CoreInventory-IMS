@@ -1,4 +1,6 @@
 const pool = require("../db");
+const crypto = require("crypto");
+const { enqueueEvent } = require("./outbox");
 
 /**
  * Log operation to audit trail
@@ -6,20 +8,47 @@ const pool = require("../db");
  */
 const logOperation = async (userId, operationType, operationDetails, referenceId = null) => {
     try {
+        const normalizedOp = operationType.toUpperCase();
+        const idempotencyKey = crypto
+            .createHash("sha256")
+            .update(
+                JSON.stringify({
+                    op: normalizedOp,
+                    ref: referenceId ?? null,
+                    product_id: operationDetails.product_id ?? null,
+                    warehouse_id: operationDetails.warehouse_id ?? null,
+                    quantity: operationDetails.quantity ?? null
+                })
+            )
+            .digest("hex");
+
         // Insert into stock_ledger for tracking
         if (operationDetails.product_id && operationDetails.warehouse_id && operationDetails.quantity) {
             await pool.query(
                 `INSERT INTO stock_ledger 
-                (product_id, warehouse_id, operation_type, quantity, reference_id) 
-                VALUES ($1, $2, $3, $4, $5)`,
+                (product_id, warehouse_id, operation_type, quantity, reference_id, idempotency_key) 
+                VALUES ($1, $2, $3, $4, $5, $6)
+                ON CONFLICT (idempotency_key) DO NOTHING`,
                 [
                     operationDetails.product_id,
                     operationDetails.warehouse_id,
-                    operationType.toUpperCase(),
+                    normalizedOp,
                     operationDetails.quantity,
-                    referenceId
+                    referenceId,
+                    idempotencyKey
                 ]
             );
+
+            // Emit a stock movement event for multi-site sync.
+            // Note: inventory recomputation/consistency is handled by consumers.
+            await enqueueEvent("STOCK_MOVEMENT", {
+                operation_type: normalizedOp,
+                product_id: operationDetails.product_id,
+                warehouse_id: operationDetails.warehouse_id,
+                quantity: operationDetails.quantity,
+                reference_id: referenceId,
+                idempotency_key: idempotencyKey
+            });
         }
 
         // Extended audit logging (optional - can log to separate audit table or file)
