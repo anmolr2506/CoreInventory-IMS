@@ -3,6 +3,7 @@ import {
     LayoutDashboard,
     ClipboardList,
     Package,
+    Truck,
     ArrowRightLeft,
     Settings,
     LogOut,
@@ -10,32 +11,86 @@ import {
 } from 'lucide-react';
 
 const navItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, description: 'Overview of your inventory management system with key metrics and analytics.' },
-    { id: 'operations', label: 'Operations', icon: ClipboardList, description: 'Manage all incoming receipts, outgoing deliveries, and internal transfers.' },
-    {
-        id: 'stock',
-        label: 'Products',
-        icon: Package,
-        description: 'Create and update products, categories, stock by location, and reorder rules.',
-        hoverFeatures: [
-            'Create and update products',
-            'Name, SKU/Code, Category, Unit of Measure',
-            'Initial stock (optional)',
-            'Stock availability per location',
-            'Product categories',
-            'Reordering rules'
-        ]
-    },
-    { id: 'move-history', label: 'Move History', icon: ArrowRightLeft, description: 'Track all product movements including transfers, receipts, and deliveries.' },
-    { id: 'settings', label: 'Settings', icon: Settings, description: 'Configure system preferences, user roles, and notification settings.' },
+    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, path: '/', description: 'Overview of your inventory management system with key metrics and analytics.' },
+    { id: 'operations', label: 'Operations', icon: ClipboardList, path: '/receipt', description: 'Manage incoming receipts.' },
+    { id: 'delivery', label: 'Delivery Orders', icon: Truck, path: '/delivery', description: 'Manage outgoing deliveries.' },
+    { id: 'stock', label: 'Stock', icon: Package, path: '/stock', description: 'View and manage current stock levels across all warehouses and categories.' },
+    { id: 'move-history', label: 'Move History', icon: ArrowRightLeft, path: '/move-history', description: 'Track all product movements including transfers, receipts, and deliveries.' },
+    { id: 'settings', label: 'Settings', icon: Settings, path: '/settings', description: 'Configure system preferences, user roles, and notification settings.' },
 ];
 
-const Sidebar = ({ username, activeItem = 'dashboard', onNavigate, onLogout }) => {
+const Sidebar = ({ username, activeItem = 'dashboard', onLogout, onNav }) => {
 
     const handleNavClick = (item) => {
-        if (onNavigate) {
-            onNavigate(item.id);
+        const appPaths = ['/', '/dashboard', '/receipt', '/delivery', '/operation/new'];
+        if (onNav && item.path && appPaths.includes(item.path)) {
+            onNav(item.path);
+            return;
         }
+        const pageContent = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>${item.label} - Core Inventory</title>
+                <style>
+                    * { margin: 0; padding: 0; box-sizing: border-box; }
+                    body {
+                        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+                        background: #0a0f1c;
+                        color: #e2e8f0;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        min-height: 100vh;
+                        padding: 2rem;
+                    }
+                    .container {
+                        max-width: 600px;
+                        text-align: center;
+                        background: #162032;
+                        border: 1px solid #27354f;
+                        border-radius: 1rem;
+                        padding: 3rem;
+                        box-shadow: 0 25px 50px rgba(0,0,0,0.5);
+                    }
+                    .icon-box {
+                        width: 80px;
+                        height: 80px;
+                        background: linear-gradient(135deg, #06b6d4, #3b82f6);
+                        border-radius: 1rem;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        margin: 0 auto 1.5rem;
+                        font-size: 2rem;
+                    }
+                    h1 { font-size: 2rem; font-weight: 800; margin-bottom: 1rem; color: white; }
+                    p { color: #94a3b8; line-height: 1.6; font-size: 1.1rem; }
+                    .badge {
+                        display: inline-block;
+                        margin-top: 1.5rem;
+                        padding: 0.5rem 1.5rem;
+                        background: #0e7490;
+                        border-radius: 2rem;
+                        font-size: 0.85rem;
+                        color: #cffafe;
+                        font-weight: 600;
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="icon-box">📋</div>
+                    <h1>${item.label}</h1>
+                    <p>${item.description}</p>
+                    <span class="badge">Core Inventory Module</span>
+                </div>
+            </body>
+            </html>
+        `;
+        const blob = new Blob([pageContent], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        window.open(url, '_blank');
     };
 
     return (
