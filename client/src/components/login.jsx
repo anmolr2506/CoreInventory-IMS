@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { toast } from 'react-toastify';
 import { Eye, EyeOff, LogIn } from 'lucide-react';
 
-const Login = ({ onToggleForm, onToggleForgotPassword }) => {
+const Login = ({ onToggleForm, onToggleForgotPassword, onLoginSuccess }) => {
     const [inputs, setInputs] = useState({
         email: "",
         password: ""
@@ -28,6 +28,7 @@ const Login = ({ onToggleForm, onToggleForgotPassword }) => {
             if (response.ok) {
                 localStorage.setItem("token", parseRes.token);
                 toast.success("Login Successful!");
+                if (onLoginSuccess) onLoginSuccess(parseRes.username || 'User');
             } else {
                 toast.error(parseRes); 
             }

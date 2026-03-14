@@ -1,14 +1,74 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Signup from './components/signup.jsx';
 import Login from './components/login.jsx';
 import ForgotPassword from './components/forgotPassword.jsx';
+import NetflixIntro from './components/NetflixIntro.jsx';
+import Dashboard from './components/Dashboard.jsx';
+import Sidebar from './components/Sidebar.jsx';
 import { ToastContainer } from 'react-toastify';
 import { Package, TrendingUp, Building2, FileText } from 'lucide-react';
 import 'react-toastify/dist/ReactToastify.css';
 
 function App() {
   const [authView, setAuthView] = useState('landing'); // 'landing', 'login', 'signup', 'forgot_password'
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [showIntro, setShowIntro] = useState(false);
+  const [username, setUsername] = useState('');
 
+  // Check for existing token on mount
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    const savedUsername = localStorage.getItem('username');
+    if (token && savedUsername) {
+      setUsername(savedUsername);
+      setIsAuthenticated(true);
+    }
+  }, []);
+
+  const handleAuthSuccess = (name) => {
+    setUsername(name);
+    localStorage.setItem('username', name);
+    setShowIntro(true);
+  };
+
+  const handleIntroComplete = useCallback(() => {
+    setShowIntro(false);
+    setIsAuthenticated(true);
+  }, []);
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('username');
+    setIsAuthenticated(false);
+    setUsername('');
+    setAuthView('landing');
+  };
+
+  // Netflix Intro Screen
+  if (showIntro) {
+    return <NetflixIntro onComplete={handleIntroComplete} />;
+  }
+
+  // Authenticated: Show Dashboard
+  if (isAuthenticated) {
+    return (
+      <div className="flex min-h-screen w-full bg-[#0a0f1c] text-slate-300 animate-[fade-in_0.8s_ease-out]">
+        <Sidebar username={username} activeItem="dashboard" onLogout={handleLogout} />
+        <Dashboard username={username} />
+        <ToastContainer
+          position="top-right"
+          autoClose={3000}
+          hideProgressBar={false}
+          newestOnTop={false}
+          closeOnClick
+          pauseOnHover
+          theme="colored"
+        />
+      </div>
+    );
+  }
+
+  // Not Authenticated: Show Auth Flow
   return (
     <div className="flex min-h-screen w-full font-sans bg-[#0a0f1c] text-slate-300">
       
@@ -89,8 +149,8 @@ function App() {
           </div>
         )}
 
-        {authView === 'login' && <Login onToggleForm={() => setAuthView('signup')} onToggleForgotPassword={() => setAuthView('forgot_password')} />}
-        {authView === 'signup' && <Signup onToggleForm={() => setAuthView('login')} />}
+        {authView === 'login' && <Login onToggleForm={() => setAuthView('signup')} onToggleForgotPassword={() => setAuthView('forgot_password')} onLoginSuccess={handleAuthSuccess} />}
+        {authView === 'signup' && <Signup onToggleForm={() => setAuthView('login')} onSignupSuccess={handleAuthSuccess} />}
         {authView === 'forgot_password' && <ForgotPassword onBackToLogin={() => setAuthView('login')} />}
         
         {/* Back button when not on landing and not on forgot_password (it has its own back button) */}

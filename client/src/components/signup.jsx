@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { toast } from 'react-toastify';
 import { Eye, EyeOff, UserPlus } from 'lucide-react';
 
-const Signup = ({ onToggleForm }) => {
+const Signup = ({ onToggleForm, onSignupSuccess }) => {
     const [inputs, setInputs] = useState({
         username: "",
         email: "",
@@ -34,6 +34,7 @@ const Signup = ({ onToggleForm }) => {
             if (response.ok) {
                 localStorage.setItem("token", parseRes.token);
                 toast.success("Account created successfully!");
+                if (onSignupSuccess) onSignupSuccess(parseRes.username || username);
             } else {
                 toast.error(parseRes); // Shows "User already exists!" from backend
             }

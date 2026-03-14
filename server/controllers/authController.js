@@ -17,12 +17,12 @@ const signup = async (req, res) => {
         const bcryptPassword = await bcrypt.hash(password, salt);
 
         const newUser = await pool.query(
-            "INSERT INTO users (username, email, password) VALUES ($1, $2, $3) RETURNING *",
-            [username, email, bcryptPassword]
+            "INSERT INTO users (name, email, password_hash, role) VALUES ($1, $2, $3, $4) RETURNING *",
+            [username, email, bcryptPassword, 'staff']
         );
 
         const token = jwtGenerator(newUser.rows[0].user_id);
-        res.json({ token });
+        res.json({ token, username: newUser.rows[0].name });
 
     } catch (err) {
         console.error(err.message);
@@ -40,14 +40,14 @@ const login = async (req, res) => {
             return res.status(401).json("Password or Email is incorrect");
         }
 
-        const validPassword = await bcrypt.compare(password, user.rows[0].password);
+        const validPassword = await bcrypt.compare(password, user.rows[0].password_hash);
 
         if (!validPassword) {
             return res.status(401).json("Password or Email is incorrect");
         }
 
         const token = jwtGenerator(user.rows[0].user_id);
-        res.json({ token });
+        res.json({ token, username: user.rows[0].name });
     } catch (err) {
         console.error(err.message);
         res.status(500).send("Server Error");
@@ -116,7 +116,7 @@ const resetPassword = async (req, res) => {
         const bcryptPassword = await bcrypt.hash(newPassword, salt);
 
         await pool.query(
-            "UPDATE users SET password = $1, reset_otp = null, reset_otp_expiry = null WHERE email = $2",
+            "UPDATE users SET password_hash = $1, reset_otp = null, reset_otp_expiry = null WHERE email = $2",
             [bcryptPassword, email]
         );
 
