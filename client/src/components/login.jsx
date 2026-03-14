@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { toast } from 'react-toastify';
-import { Eye, LogIn } from 'lucide-react';
+import { Eye, EyeOff, LogIn } from 'lucide-react';
 
 const Login = ({ onToggleForm, onToggleForgotPassword }) => {
     const [inputs, setInputs] = useState({
         email: "",
         password: ""
     });
+    const [showPassword, setShowPassword] = useState(false);
 
     const { email, password } = inputs;
 
@@ -59,7 +60,7 @@ const Login = ({ onToggleForm, onToggleForgotPassword }) => {
                     <label className="text-sm font-semibold text-slate-300">Password</label>
                     <div className="relative">
                         <input
-                            type="password"
+                            type={showPassword ? "text" : "password"}
                             name="password"
                             placeholder="••••••••"
                             value={password}
@@ -67,8 +68,8 @@ const Login = ({ onToggleForm, onToggleForgotPassword }) => {
                             className="w-full px-4 py-3 bg-[#0f172a] border border-[#334155] text-white rounded-xl focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 outline-none transition-all placeholder:text-slate-600 tracking-widest"
                             required
                         />
-                        <button type="button" className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors">
-                            <Eye className="w-5 h-5" />
+                        <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors">
+                            {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                         </button>
                     </div>
                 </div>

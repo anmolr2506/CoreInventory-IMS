@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { toast } from 'react-toastify';
-import { Mail, CheckCircle, Lock, ArrowLeft } from 'lucide-react';
+import { Mail, CheckCircle, Lock, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 
 const ForgotPassword = ({ onBackToLogin }) => {
     const [step, setStep] = useState(1);
     const [email, setEmail] = useState("");
     const [otp, setOtp] = useState("");
     const [newPassword, setNewPassword] = useState("");
+    const [showPassword, setShowPassword] = useState(false);
 
     const handleSendOtp = async (e) => {
         e.preventDefault();
@@ -136,16 +137,21 @@ const ForgotPassword = ({ onBackToLogin }) => {
                 <>
                     <p className="text-slate-400 text-sm mb-8">Enter your new password below to regain access to your account.</p>
                     <form onSubmit={handleResetPassword} className="space-y-5 animate-fade-in-up">
-                        <div className="space-y-2">
+                        <div className="space-y-2 relative">
                             <label className="text-sm font-semibold text-slate-300">New Password</label>
-                            <input
-                                type="password"
-                                placeholder="••••••••"
-                                value={newPassword}
-                                onChange={(e) => setNewPassword(e.target.value)}
-                                className="w-full px-4 py-3 bg-[#0f172a] border border-[#334155] text-white rounded-xl focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 outline-none transition-all placeholder:text-slate-600 tracking-widest"
-                                required
-                            />
+                            <div className="relative">
+                                <input
+                                    type={showPassword ? "text" : "password"}
+                                    placeholder="••••••••"
+                                    value={newPassword}
+                                    onChange={(e) => setNewPassword(e.target.value)}
+                                    className="w-full px-4 py-3 bg-[#0f172a] border border-[#334155] text-white rounded-xl focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 outline-none transition-all placeholder:text-slate-600 tracking-widest"
+                                    required
+                                />
+                                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors">
+                                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                                </button>
+                            </div>
                         </div>
                         <button className="w-full bg-cyan-500 hover:bg-cyan-400 text-white font-bold py-3.5 rounded-xl shadow-[0_0_15px_rgba(6,182,212,0.4)] transition-all duration-300 transform hover:-translate-y-0.5 flex items-center justify-center space-x-2 mt-4">
                             <Lock className="w-5 h-5" />

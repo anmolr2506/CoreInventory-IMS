@@ -1,20 +1,26 @@
 import React, { useState } from 'react';
 import { toast } from 'react-toastify';
-import { Eye, UserPlus } from 'lucide-react';
+import { Eye, EyeOff, UserPlus } from 'lucide-react';
 
 const Signup = ({ onToggleForm }) => {
     const [inputs, setInputs] = useState({
         username: "",
         email: "",
-        password: ""
+        password: "",
+        confirm_password: ""
     });
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-    const { username, email, password } = inputs;
+    const { username, email, password, confirm_password } = inputs;
 
     const onChange = (e) => setInputs({ ...inputs, [e.target.name]: e.target.value });
 
     const onSubmitForm = async (e) => {
         e.preventDefault();
+        if (password !== confirm_password) {
+            return toast.error("Passwords do not match!");
+        }
         try {
             const body = { username, email, password };
             const response = await fetch("http://localhost:5000/signup", {
@@ -73,7 +79,7 @@ const Signup = ({ onToggleForm }) => {
                     <label className="text-sm font-semibold text-slate-300">Password</label>
                     <div className="relative">
                         <input
-                            type="password"
+                            type={showPassword ? "text" : "password"}
                             name="password"
                             placeholder="••••••••"
                             value={password}
@@ -81,8 +87,8 @@ const Signup = ({ onToggleForm }) => {
                             className="w-full px-4 py-3 bg-[#0f172a] border border-[#334155] text-white rounded-xl focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 outline-none transition-all placeholder:text-slate-600 tracking-widest"
                             required
                         />
-                        <button type="button" className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors">
-                            <Eye className="w-5 h-5" />
+                        <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors">
+                            {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                         </button>
                     </div>
                 </div>
@@ -92,14 +98,16 @@ const Signup = ({ onToggleForm }) => {
                     <label className="text-sm font-semibold text-slate-300">Confirm Password</label>
                     <div className="relative">
                         <input
-                            type="password"
+                            type={showConfirmPassword ? "text" : "password"}
                             name="confirm_password"
+                            value={confirm_password}
+                            onChange={onChange}
                             placeholder="••••••••"
                             className="w-full px-4 py-3 bg-[#0f172a] border border-[#334155] text-white rounded-xl focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 outline-none transition-all placeholder:text-slate-600 tracking-widest"
                             required
                         />
-                        <button type="button" className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors">
-                            <Eye className="w-5 h-5" />
+                        <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors">
+                            {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                         </button>
                     </div>
                 </div>
