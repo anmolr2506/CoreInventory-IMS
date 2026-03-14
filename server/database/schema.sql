@@ -46,6 +46,7 @@ CREATE TABLE IF NOT EXISTS products (
 CREATE TABLE IF NOT EXISTS warehouses (
     warehouse_id SERIAL PRIMARY KEY,
     name VARCHAR(150) NOT NULL UNIQUE,
+    short_code VARCHAR(10) NOT NULL UNIQUE,
     location TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -245,4 +246,23 @@ CREATE TABLE IF NOT EXISTS warehouse_assignments (
 
     CONSTRAINT unique_user_warehouse
     UNIQUE (user_id, warehouse_id)
+);
+
+-- =====================================
+-- LOCATIONS (Warehouse Sub-divisions)
+-- =====================================
+
+CREATE TABLE IF NOT EXISTS locations (
+    location_id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    short_code VARCHAR(10) NOT NULL,
+    warehouse_id INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_location_warehouse
+    FOREIGN KEY (warehouse_id)
+    REFERENCES warehouses(warehouse_id) ON DELETE CASCADE,
+
+    CONSTRAINT unique_location_code_per_warehouse
+    UNIQUE (warehouse_id, short_code)
 );
