@@ -8,6 +8,7 @@ import Dashboard from './components/Dashboard.jsx';
 import OperationsScreen from './components/OperationsScreen.jsx';
 import NewReceiptScreen from './components/NewReceiptScreen.jsx';
 import Sidebar from './components/Sidebar.jsx';
+import StockScreen from './components/StockScreen.jsx';
 import { ToastContainer } from 'react-toastify';
 import { Package, TrendingUp, Building2, FileText } from 'lucide-react';
 import 'react-toastify/dist/ReactToastify.css';
@@ -64,20 +65,45 @@ function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [showIntro, setShowIntro] = useState(false);
   const [username, setUsername] = useState('');
+  const [userRole, setUserRole] = useState('');
+  const [activeView, setActiveView] = useState('dashboard');
 
   // Check for existing token on mount
   useEffect(() => {
     const token = localStorage.getItem('token');
     const savedUsername = localStorage.getItem('username');
+    const savedRole = localStorage.getItem('role');
+    const savedApproved = localStorage.getItem('is_approved');
+    const savedStatus = localStorage.getItem('approval_status');
+    const savedCreatedAt = localStorage.getItem('created_at');
+    
     if (token && savedUsername) {
       setUsername(savedUsername);
+      setUserRole(savedRole || 'staff');
+      setIsApproved(savedApproved === 'true');
+      setApprovalStatus(savedStatus || 'approved');
+      setCreatedAt(savedCreatedAt || '');
       setIsAuthenticated(true);
     }
   }, []);
 
-  const handleAuthSuccess = (name) => {
+  const handleAuthSuccess = (userInfo) => {
+    // Can be either string (old way) or object (new way)
+    const name = typeof userInfo === 'string' ? userInfo : userInfo.username;
+    const role = typeof userInfo === 'string' ? localStorage.getItem('role') : userInfo.role;
+    const approved = typeof userInfo === 'object' ? userInfo.is_approved : localStorage.getItem('is_approved') === 'true';
+    const status = typeof userInfo === 'object' ? userInfo.approval_status : localStorage.getItem('approval_status') || 'approved';
+    const created = typeof userInfo === 'object' ? userInfo.created_at : localStorage.getItem('created_at') || '';
+    
     setUsername(name);
+    setUserRole(role || 'staff');
+    setActiveView('dashboard');
     localStorage.setItem('username', name);
+    localStorage.setItem('role', role || 'staff');
+    localStorage.setItem('is_approved', approved);
+    localStorage.setItem('approval_status', status);
+    if (created) localStorage.setItem('created_at', created);
+    
     setShowIntro(true);
   };
 
@@ -89,8 +115,16 @@ function App() {
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('username');
+    localStorage.removeItem('role');
+    localStorage.removeItem('user_id');
+    localStorage.removeItem('warehouses');
+    localStorage.removeItem('is_approved');
+    localStorage.removeItem('approval_status');
+    localStorage.removeItem('created_at');
     setIsAuthenticated(false);
     setUsername('');
+    setUserRole('');
+    setActiveView('dashboard');
     setAuthView('landing');
   };
 
@@ -99,14 +133,41 @@ function App() {
     return <NetflixIntro onComplete={handleIntroComplete} />;
   }
 
-  // Authenticated: Show App with routing
+  // Authenticated: Show Role-Based Dashboard or Waiting for Approval
   if (isAuthenticated) {
+    if (activeView === 'stock') {
+      return (
+        <>
+          <StockScreen
+            username={username}
+            role={userRole || 'staff'}
+            onLogout={handleLogout}
+            onNavigate={setActiveView}
+          />
+          <ToastContainer
+            position="top-right"
+            autoClose={3000}
+            hideProgressBar={false}
+            newestOnTop={false}
+            closeOnClick
+            pauseOnHover
+            theme="colored"
+          />
+        </>
+      );
+    }
+
     return (
-      <BrowserRouter>
-        <AuthenticatedLayout
-          username={username}
-          onLogout={handleLogout}
-        />
+      <>
+        <div className="flex min-h-screen bg-[#0a0f1c] text-white">
+          <Sidebar
+            username={username}
+            activeItem={activeView}
+            onNavigate={setActiveView}
+            onLogout={handleLogout}
+          />
+          <Dashboard username={username} />
+        </div>
         <ToastContainer
           position="top-right"
           autoClose={3000}
@@ -116,7 +177,7 @@ function App() {
           pauseOnHover
           theme="colored"
         />
-      </BrowserRouter>
+      </>
     );
   }
 

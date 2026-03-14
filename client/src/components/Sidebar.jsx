@@ -113,18 +113,30 @@ const Sidebar = ({ username, activeItem = 'dashboard', onLogout, onNav }) => {
                         const Icon = item.icon;
                         const isActive = item.id === activeItem;
                         return (
-                            <button
-                                key={item.id}
-                                onClick={() => handleNavClick(item)}
-                                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 cursor-pointer group ${
-                                    isActive
-                                        ? 'bg-cyan-500/15 text-cyan-400 border border-cyan-500/20 shadow-[0_0_10px_rgba(6,182,212,0.1)]'
-                                        : 'text-slate-400 hover:bg-[#1e293b]/60 hover:text-white border border-transparent hover:border-[#334155]/50'
-                                }`}
-                            >
-                                <Icon className={`w-5 h-5 transition-transform duration-200 group-hover:scale-110 ${isActive ? 'text-cyan-400' : ''}`} />
-                                <span>{item.label}</span>
-                            </button>
+                            <div key={item.id} className="relative group/nav">
+                                <button
+                                    onClick={() => handleNavClick(item)}
+                                    className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 cursor-pointer group ${
+                                        isActive
+                                            ? 'bg-cyan-500/15 text-cyan-400 border border-cyan-500/20 shadow-[0_0_10px_rgba(6,182,212,0.1)]'
+                                            : 'text-slate-400 hover:bg-[#1e293b]/60 hover:text-white border border-transparent hover:border-[#334155]/50'
+                                    }`}
+                                >
+                                    <Icon className={`w-5 h-5 transition-transform duration-200 group-hover:scale-110 ${isActive ? 'text-cyan-400' : ''}`} />
+                                    <span>{item.label}</span>
+                                </button>
+
+                                {item.hoverFeatures ? (
+                                    <div className="pointer-events-none invisible absolute left-[calc(100%+8px)] top-1/2 z-30 w-72 -translate-y-1/2 rounded-xl border border-[#334155] bg-[#101a30] p-3 text-left opacity-0 shadow-2xl transition-all duration-200 group-hover/nav:visible group-hover/nav:opacity-100">
+                                        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-cyan-300">Products Features</p>
+                                        <ul className="space-y-1 text-xs text-slate-300">
+                                            {item.hoverFeatures.map((feature) => (
+                                                <li key={feature}>- {feature}</li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                ) : null}
+                            </div>
                         );
                     })}
                 </nav>

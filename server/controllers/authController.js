@@ -5,7 +5,7 @@ const { sendOtpEmail } = require("../utils/email");
 
 const signup = async (req, res) => {
     try {
-        const { username, email, password } = req.body;
+        const { username, email, password, role = 'staff', warehouse_id, requested_role = 'staff' } = req.body;
 
         const user = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
         if (user.rows.length !== 0) {
@@ -16,13 +16,35 @@ const signup = async (req, res) => {
         const salt = await bcrypt.genSalt(saltRound);
         const bcryptPassword = await bcrypt.hash(password, salt);
 
+        // New users are created as unapproved with 'pending' status
+        // They will be assigned their actual role when approved
         const newUser = await pool.query(
-            "INSERT INTO users (name, email, password_hash, role) VALUES ($1, $2, $3, $4) RETURNING *",
-            [username, email, bcryptPassword, 'staff']
+            `INSERT INTO users (name, email, password_hash, role, is_approved, approval_status, requested_role) 
+            VALUES ($1, $2, $3, $4, $5, $6, $7) 
+            RETURNING user_id, name, email, role, is_approved, approval_status, requested_role, created_at`,
+            [username, email, bcryptPassword, 'pending_user', false, 'pending', requested_role]
         );
 
+        // Assign warehouse if provided
+        let warehouses = [];
+        if (warehouse_id) {
+            await pool.query(
+                "INSERT INTO warehouse_assignments (user_id, warehouse_id) VALUES ($1, $2) ON CONFLICT (user_id, warehouse_id) DO NOTHING",
+                [newUser.rows[0].user_id, warehouse_id]
+            );
+            warehouses = [{ warehouse_id }];
+        }
+
         const token = jwtGenerator(newUser.rows[0].user_id);
-        res.json({ token, username: newUser.rows[0].name });
+        res.json({ 
+            token, 
+            username: newUser.rows[0].name,
+            role: newUser.rows[0].role,
+            is_approved: false,
+            approval_status: 'pending',
+            created_at: newUser.rows[0].created_at,
+            warehouses
+        });
 
     } catch (err) {
         console.error(err.message);
@@ -34,7 +56,7 @@ const login = async (req, res) => {
     try {
         const { email, password } = req.body;
 
-        const user = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
+        const user = await pool.query("SELECT * FROM users WHERE email = $1 AND is_active = true", [email]);
 
         if (user.rows.length === 0) {
             return res.status(401).json("Password or Email is incorrect");
@@ -46,8 +68,38 @@ const login = async (req, res) => {
             return res.status(401).json("Password or Email is incorrect");
         }
 
-        const token = jwtGenerator(user.rows[0].user_id);
-        res.json({ token, username: user.rows[0].name });
+        const userId = user.rows[0].user_id;
+        const role = user.rows[0].role;
+        const is_approved = user.rows[0].is_approved;
+        const approval_status = user.rows[0].approval_status;
+
+        // Update last login timestamp
+        await pool.query(
+            "UPDATE users SET last_login = NOW() WHERE user_id = $1",
+            [userId]
+        );
+
+        // Get warehouse assignments for staff members
+        let warehouses = [];
+        if (role === 'staff' || role === 'manager') {
+            const warehouseResult = await pool.query(
+                "SELECT wa.warehouse_id, w.name FROM warehouse_assignments wa JOIN warehouses w ON wa.warehouse_id = w.warehouse_id WHERE wa.user_id = $1",
+                [userId]
+            );
+            warehouses = warehouseResult.rows;
+        }
+
+        const token = jwtGenerator(userId);
+        res.json({ 
+            token, 
+            username: user.rows[0].name,
+            role,
+            is_approved,
+            approval_status,
+            created_at: user.rows[0].created_at,
+            warehouses,
+            user_id: userId 
+        });
     } catch (err) {
         console.error(err.message);
         res.status(500).send("Server Error");

@@ -27,8 +27,28 @@ const Login = ({ onToggleForm, onToggleForgotPassword, onLoginSuccess }) => {
 
             if (response.ok) {
                 localStorage.setItem("token", parseRes.token);
-                toast.success("Login Successful!");
-                if (onLoginSuccess) onLoginSuccess(parseRes.username || 'User');
+                localStorage.setItem("username", parseRes.username || 'User');
+                localStorage.setItem("role", parseRes.role || 'staff');
+                localStorage.setItem("user_id", parseRes.user_id);
+                localStorage.setItem("is_approved", parseRes.is_approved !== undefined ? parseRes.is_approved : true);
+                localStorage.setItem("approval_status", parseRes.approval_status || 'approved');
+                if (parseRes.created_at) localStorage.setItem("created_at", parseRes.created_at);
+                
+                // Store warehouse assignments for staff
+                if (parseRes.warehouses && parseRes.warehouses.length > 0) {
+                    localStorage.setItem("warehouses", JSON.stringify(parseRes.warehouses));
+                }
+
+                toast.success(`Login Successful! Welcome ${parseRes.role}!`);
+                if (onLoginSuccess) onLoginSuccess({
+                    username: parseRes.username || 'User',
+                    role: parseRes.role,
+                    warehouses: parseRes.warehouses || [],
+                    user_id: parseRes.user_id,
+                    is_approved: parseRes.is_approved !== undefined ? parseRes.is_approved : true,
+                    approval_status: parseRes.approval_status || 'approved',
+                    created_at: parseRes.created_at || ''
+                });
             } else {
                 toast.error(parseRes); 
             }

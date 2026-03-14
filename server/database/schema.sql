@@ -3,9 +3,42 @@ CREATE TABLE IF NOT EXISTS users (
     name VARCHAR(100) NOT NULL,
     email VARCHAR(150) NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,
-    role VARCHAR(30) NOT NULL CHECK (role IN ('manager','staff','admin')),
+    role VARCHAR(30) NOT NULL CHECK (role IN ('manager','staff','admin','pending_user')),
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+-- =====================================
+-- USERS TABLE EXTRA COLUMNS
+-- =====================================
+
+ALTER TABLE users
+ADD COLUMN IF NOT EXISTS reset_otp VARCHAR(10);
+
+ALTER TABLE users
+ADD COLUMN IF NOT EXISTS reset_otp_expiry TIMESTAMP;
+
+ALTER TABLE users
+ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;
+
+ALTER TABLE users
+ADD COLUMN IF NOT EXISTS last_login TIMESTAMP;
+
+ALTER TABLE users
+ADD COLUMN IF NOT EXISTS is_approved BOOLEAN DEFAULT false;
+
+ALTER TABLE users
+ADD COLUMN IF NOT EXISTS approval_status VARCHAR(30) DEFAULT 'pending' CHECK (approval_status IN ('pending', 'approved', 'rejected'));
+
+ALTER TABLE users
+ADD COLUMN IF NOT EXISTS approved_by INT;
+
+ALTER TABLE users
+ADD COLUMN IF NOT EXISTS approved_at TIMESTAMP;
+
+ALTER TABLE users
+ADD COLUMN IF NOT EXISTS requested_role VARCHAR(30) NOT NULL DEFAULT 'staff' CHECK (requested_role IN ('manager', 'staff'));
+
+
 CREATE TABLE IF NOT EXISTS categories (
     category_id SERIAL PRIMARY KEY,
     name VARCHAR(100) NOT NULL UNIQUE,
@@ -28,6 +61,7 @@ CREATE TABLE IF NOT EXISTS products (
 CREATE TABLE IF NOT EXISTS warehouses (
     warehouse_id SERIAL PRIMARY KEY,
     name VARCHAR(150) NOT NULL UNIQUE,
+    short_code VARCHAR(10) NOT NULL UNIQUE,
     location TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -36,6 +70,7 @@ CREATE TABLE IF NOT EXISTS inventory (
     product_id INT NOT NULL,
     warehouse_id INT NOT NULL,
     quantity INT NOT NULL DEFAULT 0 CHECK (quantity >= 0),
+    reserved_quantity INT NOT NULL DEFAULT 0 CHECK (reserved_quantity >= 0),
     last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT fk_inventory_product
@@ -51,6 +86,12 @@ CREATE TABLE IF NOT EXISTS inventory (
     CONSTRAINT unique_product_warehouse
         UNIQUE (product_id, warehouse_id)
 );
+
+ALTER TABLE inventory
+ADD COLUMN IF NOT EXISTS reserved_quantity INT NOT NULL DEFAULT 0;
+
+CREATE INDEX IF NOT EXISTS idx_inventory_product_warehouse
+ON inventory(product_id, warehouse_id);
 CREATE TABLE IF NOT EXISTS receipts (
     receipt_id SERIAL PRIMARY KEY,
     product_id INT NOT NULL,
@@ -73,6 +114,17 @@ CREATE TABLE IF NOT EXISTS receipts (
         FOREIGN KEY (received_by)
         REFERENCES users(user_id)
 );
+
+ALTER TABLE receipts
+ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'pending';
+
+ALTER TABLE deliveries
+ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'pending';
+
+ALTER TABLE transfers
+ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'pending';
+
+
 CREATE TABLE IF NOT EXISTS deliveries (
     delivery_id SERIAL PRIMARY KEY,
     product_id INT NOT NULL,
@@ -184,4 +236,57 @@ CREATE TABLE IF NOT EXISTS supplier_products (
     lead_time_days INT,
 
     PRIMARY KEY (supplier_id, product_id)
+);
+
+-- =====================================
+-- ROLE PERMISSIONS
+-- =====================================
+
+CREATE TABLE IF NOT EXISTS role_permissions (
+    permission_id SERIAL PRIMARY KEY,
+    role VARCHAR(30) NOT NULL,
+    permission_name VARCHAR(100) NOT NULL UNIQUE,
+    description TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- =====================================
+-- WAREHOUSE ASSIGNMENTS
+-- =====================================
+
+CREATE TABLE IF NOT EXISTS warehouse_assignments (
+    assignment_id SERIAL PRIMARY KEY,
+    user_id INT NOT NULL,
+    warehouse_id INT NOT NULL,
+    assigned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_assignment_user
+    FOREIGN KEY (user_id)
+    REFERENCES users(user_id) ON DELETE CASCADE,
+
+    CONSTRAINT fk_assignment_warehouse
+    FOREIGN KEY (warehouse_id)
+    REFERENCES warehouses(warehouse_id) ON DELETE CASCADE,
+
+    CONSTRAINT unique_user_warehouse
+    UNIQUE (user_id, warehouse_id)
+);
+
+-- =====================================
+-- LOCATIONS (Warehouse Sub-divisions)
+-- =====================================
+
+CREATE TABLE IF NOT EXISTS locations (
+    location_id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    short_code VARCHAR(10) NOT NULL,
+    warehouse_id INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_location_warehouse
+    FOREIGN KEY (warehouse_id)
+    REFERENCES warehouses(warehouse_id) ON DELETE CASCADE,
+
+    CONSTRAINT unique_location_code_per_warehouse
+    UNIQUE (warehouse_id, short_code)
 );
