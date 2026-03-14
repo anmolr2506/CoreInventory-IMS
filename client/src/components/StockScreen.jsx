@@ -15,6 +15,10 @@ const StockScreen = ({ username, role, onLogout, onNavigate }) => {
     const [products, setProducts] = useState([]);
     const [categories, setCategories] = useState([]);
     const [productSearch, setProductSearch] = useState('');
+    const [stockSearch, setStockSearch] = useState('');
+    const [selectedWarehouseId, setSelectedWarehouseId] = useState('all');
+    const [showWarehouseFilter, setShowWarehouseFilter] = useState(false);
+    const [warehouseOptions, setWarehouseOptions] = useState([]);
     const [productSaving, setProductSaving] = useState(false);
     const [editingProductId, setEditingProductId] = useState(null);
     const [productForm, setProductForm] = useState({
@@ -29,8 +33,6 @@ const StockScreen = ({ username, role, onLogout, onNavigate }) => {
     });
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
-    const [searchOpen, setSearchOpen] = useState(false);
-    const [searchQuery, setSearchQuery] = useState('');
     const [draftById, setDraftById] = useState({});
     const [editingCell, setEditingCell] = useState(null);
     const [savingId, setSavingId] = useState(null);
@@ -99,13 +101,16 @@ const StockScreen = ({ username, role, onLogout, onNavigate }) => {
         }
     };
 
-    const loadStock = async (query = '') => {
+    const loadStock = async (query = '', warehouseId = 'all') => {
         setLoading(true);
         setError('');
         try {
             const params = new URLSearchParams();
             if (query.trim()) {
                 params.set('search', query.trim());
+            }
+            if (warehouseId !== 'all') {
+                params.set('warehouse_id', warehouseId);
             }
             const response = await fetch(`http://localhost:5000/inventory/stock?${params.toString()}`, {
                 headers: {
@@ -123,6 +128,15 @@ const StockScreen = ({ username, role, onLogout, onNavigate }) => {
 
             const data = await response.json();
             setRows(data.rows || []);
+            setWarehouseOptions((prev) => {
+                const next = new Map(prev.map((item) => [item.id, item.name]));
+                (data.rows || []).forEach((row) => {
+                    if (row.warehouse_id) {
+                        next.set(String(row.warehouse_id), row.warehouse);
+                    }
+                });
+                return Array.from(next.entries()).map(([id, name]) => ({ id, name }));
+            });
         } catch (err) {
             toast.error(err.message || 'Failed to load stock data');
             setError(err.message || 'Failed to load stock data');
@@ -133,19 +147,19 @@ const StockScreen = ({ username, role, onLogout, onNavigate }) => {
 
     useEffect(() => {
         const timer = setTimeout(() => {
-            loadStock(searchQuery);
-        }, 250);
-
-        return () => clearTimeout(timer);
-    }, [searchQuery]);
-
-    useEffect(() => {
-        const timer = setTimeout(() => {
             loadProducts(productSearch);
         }, 250);
 
         return () => clearTimeout(timer);
     }, [productSearch]);
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            loadStock(stockSearch, selectedWarehouseId);
+        }, 250);
+
+        return () => clearTimeout(timer);
+    }, [stockSearch, selectedWarehouseId]);
 
     useEffect(() => {
         loadCategories();
@@ -203,7 +217,7 @@ const StockScreen = ({ username, role, onLogout, onNavigate }) => {
             toast.success(editingProductId ? 'Product updated' : 'Product created');
             resetProductForm();
             loadProducts(productSearch);
-            loadStock(searchQuery);
+            loadStock(stockSearch, selectedWarehouseId);
             loadCategories();
         } catch (err) {
             toast.error(err.message || 'Failed to save product');
@@ -386,14 +400,6 @@ const StockScreen = ({ username, role, onLogout, onNavigate }) => {
                     </nav>
 
                     <div className="flex items-center gap-3">
-                        <button
-                            type="button"
-                            onClick={() => setSearchOpen((prev) => !prev)}
-                            className="rounded-lg border border-[#2b3d65] p-2 text-slate-300 hover:bg-[#162746] hover:text-white"
-                            aria-label="Toggle product search"
-                        >
-                            <Search className="h-4 w-4" />
-                        </button>
                         <div className="flex items-center gap-2 rounded-full border border-[#2b3d65] bg-[#111f3b] px-3 py-1.5">
                             <User className="h-4 w-4 text-cyan-300" />
                             <span className="text-sm text-slate-200">{username || 'User'}</span>
@@ -419,26 +425,6 @@ const StockScreen = ({ username, role, onLogout, onNavigate }) => {
                         <h1 className="text-3xl font-bold tracking-tight text-white">Products</h1>
                         <p className="mt-1 text-sm text-slate-400">Create/update products, product categories, reorder rules, and stock by location.</p>
                         <p className="mt-1 text-xs text-cyan-300">{roleNote}</p>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                        {searchOpen && (
-                            <input
-                                type="text"
-                                value={searchQuery}
-                                onChange={(event) => setSearchQuery(event.target.value)}
-                                placeholder="Filter products by name"
-                                className="w-64 rounded-lg border border-[#2b3d65] bg-[#101d37] px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-400"
-                            />
-                        )}
-                        <button
-                            type="button"
-                            onClick={() => setSearchOpen((prev) => !prev)}
-                            className="rounded-lg border border-[#2b3d65] p-2 text-slate-300 hover:bg-[#162746] hover:text-white"
-                            aria-label="Search products"
-                        >
-                            <Search className="h-4 w-4" />
-                        </button>
                     </div>
                 </div>
 
@@ -553,7 +539,7 @@ const StockScreen = ({ username, role, onLogout, onNavigate }) => {
                             value={productSearch}
                             onChange={(event) => setProductSearch(event.target.value)}
                             placeholder="Search by name or SKU"
-                            className="w-64 rounded-lg border border-[#2b3d65] bg-[#101d37] px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-400"
+                            className="w-80 rounded-xl border border-[#2b3d65] bg-[#101d37] px-4 py-2.5 text-sm text-slate-100 outline-none focus:border-cyan-400"
                         />
                     </div>
                     <div className="overflow-x-auto">
@@ -599,6 +585,39 @@ const StockScreen = ({ username, role, onLogout, onNavigate }) => {
                 <section className="rounded-2xl border border-[#23345b] bg-[#101a30] p-4 md:p-6">
                     <div className="mb-4 flex items-center justify-between">
                         <h2 className="text-lg font-semibold text-white">Stock Availability Per Location</h2>
+                        <div className="flex items-center gap-2">
+                            <div className="relative">
+                                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                                <input
+                                    type="text"
+                                    value={stockSearch}
+                                    onChange={(event) => setStockSearch(event.target.value)}
+                                    placeholder="Search by name or SKU"
+                                    className="w-80 rounded-xl border border-[#2b3d65] bg-[#101d37] py-2.5 pl-9 pr-3 text-sm text-slate-100 outline-none focus:border-cyan-400"
+                                />
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setShowWarehouseFilter((prev) => !prev)}
+                                className="rounded-xl border border-[#2b3d65] bg-[#101d37] px-3 py-2.5 text-xs font-semibold uppercase tracking-wide text-slate-300"
+                            >
+                                {showWarehouseFilter ? 'Hide Filter' : 'Filter'}
+                            </button>
+                            {showWarehouseFilter ? (
+                                <select
+                                    value={selectedWarehouseId}
+                                    onChange={(event) => setSelectedWarehouseId(event.target.value)}
+                                    className="rounded-xl border border-[#2b3d65] bg-[#101d37] px-3 py-2.5 text-sm text-slate-100 outline-none focus:border-cyan-400"
+                                >
+                                    <option value="all">All Warehouses</option>
+                                    {warehouseOptions.map((warehouse) => (
+                                        <option key={warehouse.id} value={warehouse.id}>
+                                            {warehouse.name}
+                                        </option>
+                                    ))}
+                                </select>
+                            ) : null}
+                        </div>
                     </div>
                     {error ? (
                         <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm text-red-200">
