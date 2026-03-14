@@ -1,21 +1,78 @@
 const router = require("express").Router();
 const authorizeToken = require("../middleware/authMiddleware");
 const { checkRole, checkWarehouseAccess } = require("../middleware/roleAuthorization");
-const pool = require("../db");
-const { logOperation } = require("../utils/auditLog");
+const {
+    getAllTransfers,
+    getTransfer,
+    createTransfer,
+    getTransferHistory,
+    getTransferStats
+} = require("../controllers/transferController");
 
 /**
  * Transfer Routes with Role-Based Access Control
  * 
- * STAFF: Can create transfer requests from their assigned warehouse
- * MANAGERS: Can approve transfers
+ * Handles internal warehouse transfers:
+ * - Between different warehouses
+ * - Between locations within same warehouse
+ * - Between locations across warehouses
+ * 
+ * MANAGERS: Can create and view transfers
+ * STAFF: Can create transfers from their assigned warehouse
  * ADMIN: Full access
  */
 
-// Create a transfer request (staff only) - PENDING approval
-router.post("/transfer", authorizeToken, checkRole('staff'), async (req, res) => {
+// Get all transfers
+router.get("/transfers", authorizeToken, async (req, res) => {
     try {
-        const { product_id, from_warehouse, to_warehouse, quantity } = req.body;
+        await getAllTransfers(req, res);
+    } catch (err) {
+        console.error("Transfer route error:", err.message);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// Get transfer by ID
+router.get("/transfer/:transfer_id", authorizeToken, async (req, res) => {
+    try {
+        await getTransfer(req, res);
+    } catch (err) {
+        console.error("Transfer route error:", err.message);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// Create a new transfer
+router.post("/transfer", authorizeToken, checkRole(['manager', 'admin']), async (req, res) => {
+    try {
+        await createTransfer(req, res);
+    } catch (err) {
+        console.error("Transfer route error:", err.message);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// Get transfer history with pagination and filtering
+router.get("/transfer-history", authorizeToken, async (req, res) => {
+    try {
+        await getTransferHistory(req, res);
+    } catch (err) {
+        console.error("Transfer route error:", err.message);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// Get transfer statistics
+router.get("/transfer-stats", authorizeToken, async (req, res) => {
+    try {
+        await getTransferStats(req, res);
+    } catch (err) {
+        console.error("Transfer route error:", err.message);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+module.exports = router;
         const userId = req.user.id;
 
         // Validate input

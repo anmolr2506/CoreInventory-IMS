@@ -5,7 +5,7 @@ const { sendOtpEmail } = require("../utils/email");
 
 const signup = async (req, res) => {
     try {
-        const { username, email, password, role = 'staff', warehouse_id } = req.body;
+        const { username, email, password, role = 'staff', warehouse_id, requested_role = 'staff' } = req.body;
 
         const user = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
         if (user.rows.length !== 0) {
@@ -16,14 +16,18 @@ const signup = async (req, res) => {
         const salt = await bcrypt.genSalt(saltRound);
         const bcryptPassword = await bcrypt.hash(password, salt);
 
+        // New users are created as unapproved with 'pending' status
+        // They will be assigned their actual role when approved
         const newUser = await pool.query(
-            "INSERT INTO users (name, email, password_hash, role) VALUES ($1, $2, $3, $4) RETURNING user_id, name, email, role",
-            [username, email, bcryptPassword, role]
+            `INSERT INTO users (name, email, password_hash, role, is_approved, approval_status, requested_role) 
+            VALUES ($1, $2, $3, $4, $5, $6, $7) 
+            RETURNING user_id, name, email, role, is_approved, approval_status, requested_role, created_at`,
+            [username, email, bcryptPassword, 'pending_user', false, 'pending', requested_role]
         );
 
-        // Assign warehouse if provided and user is staff
+        // Assign warehouse if provided
         let warehouses = [];
-        if (warehouse_id && role === 'staff') {
+        if (warehouse_id) {
             await pool.query(
                 "INSERT INTO warehouse_assignments (user_id, warehouse_id) VALUES ($1, $2) ON CONFLICT (user_id, warehouse_id) DO NOTHING",
                 [newUser.rows[0].user_id, warehouse_id]
@@ -36,6 +40,9 @@ const signup = async (req, res) => {
             token, 
             username: newUser.rows[0].name,
             role: newUser.rows[0].role,
+            is_approved: false,
+            approval_status: 'pending',
+            created_at: newUser.rows[0].created_at,
             warehouses
         });
 
@@ -63,6 +70,8 @@ const login = async (req, res) => {
 
         const userId = user.rows[0].user_id;
         const role = user.rows[0].role;
+        const is_approved = user.rows[0].is_approved;
+        const approval_status = user.rows[0].approval_status;
 
         // Update last login timestamp
         await pool.query(
@@ -72,7 +81,7 @@ const login = async (req, res) => {
 
         // Get warehouse assignments for staff members
         let warehouses = [];
-        if (role === 'staff') {
+        if (role === 'staff' || role === 'manager') {
             const warehouseResult = await pool.query(
                 "SELECT wa.warehouse_id, w.name FROM warehouse_assignments wa JOIN warehouses w ON wa.warehouse_id = w.warehouse_id WHERE wa.user_id = $1",
                 [userId]
@@ -85,6 +94,9 @@ const login = async (req, res) => {
             token, 
             username: user.rows[0].name,
             role,
+            is_approved,
+            approval_status,
+            created_at: user.rows[0].created_at,
             warehouses,
             user_id: userId 
         });

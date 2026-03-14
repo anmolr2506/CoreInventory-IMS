@@ -23,9 +23,16 @@ function App() {
     const token = localStorage.getItem('token');
     const savedUsername = localStorage.getItem('username');
     const savedRole = localStorage.getItem('role');
+    const savedApproved = localStorage.getItem('is_approved');
+    const savedStatus = localStorage.getItem('approval_status');
+    const savedCreatedAt = localStorage.getItem('created_at');
+    
     if (token && savedUsername) {
       setUsername(savedUsername);
       setUserRole(savedRole || 'staff');
+      setIsApproved(savedApproved === 'true');
+      setApprovalStatus(savedStatus || 'approved');
+      setCreatedAt(savedCreatedAt || '');
       setIsAuthenticated(true);
     }
   }, []);
@@ -34,12 +41,19 @@ function App() {
     // Can be either string (old way) or object (new way)
     const name = typeof userInfo === 'string' ? userInfo : userInfo.username;
     const role = typeof userInfo === 'string' ? localStorage.getItem('role') : userInfo.role;
+    const approved = typeof userInfo === 'object' ? userInfo.is_approved : localStorage.getItem('is_approved') === 'true';
+    const status = typeof userInfo === 'object' ? userInfo.approval_status : localStorage.getItem('approval_status') || 'approved';
+    const created = typeof userInfo === 'object' ? userInfo.created_at : localStorage.getItem('created_at') || '';
     
     setUsername(name);
     setUserRole(role || 'staff');
     setActiveView('dashboard');
     localStorage.setItem('username', name);
     localStorage.setItem('role', role || 'staff');
+    localStorage.setItem('is_approved', approved);
+    localStorage.setItem('approval_status', status);
+    if (created) localStorage.setItem('created_at', created);
+    
     setShowIntro(true);
   };
 
@@ -54,6 +68,9 @@ function App() {
     localStorage.removeItem('role');
     localStorage.removeItem('user_id');
     localStorage.removeItem('warehouses');
+    localStorage.removeItem('is_approved');
+    localStorage.removeItem('approval_status');
+    localStorage.removeItem('created_at');
     setIsAuthenticated(false);
     setUsername('');
     setUserRole('');
@@ -66,7 +83,7 @@ function App() {
     return <NetflixIntro onComplete={handleIntroComplete} />;
   }
 
-  // Authenticated: Show Role-Based Dashboard
+  // Authenticated: Show Role-Based Dashboard or Waiting for Approval
   if (isAuthenticated) {
     if (activeView === 'stock') {
       return (
