@@ -29,7 +29,26 @@ const validateDelivery = async (req, res) => {
         for (const line of lines) {
             if (!line.product_id || !line.quantity || line.quantity <= 0) continue;
             const invRow = await pool.query(
-                `SELECT COALESCE(i.quantity, 0) AS available, p.name, p.sku, p.unit
+                `SELECT COALESCE(i.quantity, 0) AS available,
+                        p.name,
+                        p.sku,
+                        p.unit,
+                        COALESCE(
+                            (
+                                SELECT r.unit_price
+                                FROM receipts r
+                                WHERE r.product_id = p.product_id
+                                  AND r.unit_price IS NOT NULL
+                                ORDER BY r.received_at DESC NULLS LAST, r.receipt_id DESC
+                                LIMIT 1
+                            ),
+                            (
+                                SELECT AVG(sp.price)::NUMERIC(10,2)
+                                FROM supplier_products sp
+                                WHERE sp.product_id = p.product_id
+                            ),
+                            0
+                        ) AS unit_price
                  FROM products p
                  LEFT JOIN inventory i ON p.product_id = i.product_id AND i.warehouse_id = $1
                  WHERE p.product_id = $2`,
@@ -50,8 +69,8 @@ const validateDelivery = async (req, res) => {
                     message: `Less quantity available for ${p.name}: only ${available} ${p.unit} available, requested ${requested}`
                 });
             }
-            const unitPrice = 0;
-            const lineTotal = 0;
+            const unitPrice = parseFloat(p.unit_price) || 0;
+            const lineTotal = unitPrice * requested;
             grandTotal += lineTotal;
             validated.push({
                 product_id: parseInt(line.product_id),
@@ -61,13 +80,13 @@ const validateDelivery = async (req, res) => {
                 quantity: requested,
                 available,
                 unit_price: unitPrice,
-                line_total: lineTotal
+                line_total: Math.round(lineTotal * 100) / 100
             });
         }
-        res.json({ lines: validated, grand_total: grandTotal });
+        res.json({ lines: validated, grand_total: Math.round(grandTotal * 100) / 100 });
     } catch (err) {
         console.error(err.message);
-        res.status(500).json("Server Error");
+        res.status(500).json({ error: "Server Error" });
     }
 };
 
@@ -87,23 +106,49 @@ const generateDelivery = async (req, res) => {
         const inserted = [];
         for (const line of lines) {
             if (!line.product_id || !line.quantity || line.quantity <= 0) continue;
+            const requestedQty = parseInt(line.quantity);
             const invCheck = await pool.query(
                 "SELECT quantity FROM inventory WHERE product_id = $1 AND warehouse_id = $2",
                 [line.product_id, warehouse_id]
             );
             const available = invCheck.rows[0] ? parseInt(invCheck.rows[0].quantity) || 0 : 0;
-            if (available < line.quantity) {
+            if (available < requestedQty) {
                 return res.status(400).json({
                     error: "Insufficient stock",
                     message: `Less quantity available: only ${available} in stock for this product`
                 });
             }
-            const unitPrice = parseFloat(line.unit_price) || 0;
+
+            // Fallback price if client sends empty/zero value.
+            let unitPrice = parseFloat(line.unit_price);
+            if (!Number.isFinite(unitPrice) || unitPrice <= 0) {
+                const priceRow = await pool.query(
+                    `SELECT COALESCE(
+                        (
+                            SELECT r.unit_price
+                            FROM receipts r
+                            WHERE r.product_id = $1
+                              AND r.unit_price IS NOT NULL
+                            ORDER BY r.received_at DESC NULLS LAST, r.receipt_id DESC
+                            LIMIT 1
+                        ),
+                        (
+                            SELECT AVG(sp.price)::NUMERIC(10,2)
+                            FROM supplier_products sp
+                            WHERE sp.product_id = $1
+                        ),
+                        0
+                    ) AS unit_price`,
+                    [line.product_id]
+                );
+                unitPrice = parseFloat(priceRow.rows[0]?.unit_price) || 0;
+            }
+
             const ins = await pool.query(
                 `INSERT INTO deliveries (reference_number, product_id, warehouse_id, customer_name, quantity, unit_price, delivered_by, schedule_date, status, delivered_at)
                  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'Delivered', CURRENT_TIMESTAMP)
                  RETURNING delivery_id, product_id, quantity, unit_price`,
-                [referenceNumber, line.product_id, warehouse_id, customer_name.trim(), line.quantity, unitPrice, delivered_by || null, schedDate]
+                [referenceNumber, line.product_id, warehouse_id, customer_name.trim(), requestedQty, unitPrice, delivered_by || null, schedDate]
             );
             inserted.push({ ...ins.rows[0], name: line.name, sku: line.sku, unit: line.unit });
         }
@@ -122,7 +167,7 @@ const generateDelivery = async (req, res) => {
         });
     } catch (err) {
         console.error(err.message);
-        res.status(500).json("Server Error");
+        res.status(500).json({ error: "Server Error" });
     }
 };
 
@@ -183,7 +228,7 @@ const listDeliveries = async (req, res) => {
         res.json({ view: "table", data: deliveries });
     } catch (err) {
         console.error(err.message);
-        res.status(500).json("Server Error");
+        res.status(500).json({ error: "Server Error" });
     }
 };
 
@@ -201,7 +246,7 @@ const getDeliveryStatusCounts = async (req, res) => {
         res.json(counts);
     } catch (err) {
         console.error(err.message);
-        res.status(500).json("Server Error");
+        res.status(500).json({ error: "Server Error" });
     }
 };
 

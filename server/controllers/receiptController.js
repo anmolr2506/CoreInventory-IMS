@@ -16,7 +16,7 @@ const getDropdowns = async (req, res) => {
         });
     } catch (err) {
         console.error(err.message);
-        res.status(500).json("Server Error");
+        res.status(500).json({ error: "Server Error" });
     }
 };
 
@@ -57,7 +57,7 @@ const validateReceipt = async (req, res) => {
         res.json({ lines: validated, grand_total: Math.round(grandTotal * 100) / 100 });
     } catch (err) {
         console.error(err.message);
-        res.status(500).json("Server Error");
+        res.status(500).json({ error: "Server Error" });
     }
 };
 
@@ -102,7 +102,7 @@ const generateReceipt = async (req, res) => {
         });
     } catch (err) {
         console.error(err.message);
-        res.status(500).json("Server Error");
+        res.status(500).json({ error: "Server Error" });
     }
 };
 
@@ -164,7 +164,7 @@ const listReceipts = async (req, res) => {
         res.json({ view: "table", data: receipts });
     } catch (err) {
         console.error(err.message);
-        res.status(500).json("Server Error");
+        res.status(500).json({ error: "Server Error" });
     }
 };
 

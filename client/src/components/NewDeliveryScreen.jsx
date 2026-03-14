@@ -7,6 +7,26 @@ import { toast } from 'react-toastify';
 
 const API_BASE = 'http://localhost:5000';
 
+const readApiResponse = async (res) => {
+    let data = null;
+    try {
+        data = await res.json();
+    } catch {
+        data = null;
+    }
+
+    if (!res.ok) {
+        const message = (typeof data === 'string' ? data : data?.message || data?.error) || 'Request failed';
+        throw new Error(message);
+    }
+
+    if (!data || typeof data !== 'object') {
+        throw new Error('Unexpected server response');
+    }
+
+    return data;
+};
+
 const NewDeliveryScreen = ({ onBack }) => {
     const [dropdowns, setDropdowns] = useState({ products: [], warehouses: [], users: [] });
     const [loading, setLoading] = useState(true);
@@ -31,10 +51,10 @@ const NewDeliveryScreen = ({ onBack }) => {
                 const res = await fetch(`${API_BASE}/api/deliveries/dropdowns`, {
                     headers: { Authorization: `Bearer ${token}` },
                 });
-                const data = await res.json();
+                const data = await readApiResponse(res);
                 setDropdowns(data);
             } catch (err) {
-                toast.error('Failed to load dropdowns');
+                toast.error(err.message || 'Failed to load dropdowns');
             } finally {
                 setLoading(false);
             }
@@ -77,16 +97,15 @@ const NewDeliveryScreen = ({ onBack }) => {
                     lines: filtered.map((l) => ({ product_id: parseInt(l.product_id), quantity: parseInt(l.quantity) })),
                 }),
             });
-            const data = await res.json();
-            if (data.error) {
-                toast.error(data.message || data.error);
-                return;
+            const data = await readApiResponse(res);
+            if (!Array.isArray(data.lines)) {
+                throw new Error('Unexpected validation payload');
             }
             setValidatedLines(data.lines);
             setStatus('Ready');
             toast.success('Delivery validated. Stock checked.');
         } catch (err) {
-            toast.error('Validation failed');
+            toast.error(err.message || 'Validation failed');
         } finally {
             setValidating(false);
         }
@@ -118,17 +137,16 @@ const NewDeliveryScreen = ({ onBack }) => {
                     })),
                 }),
             });
-            const data = await res.json();
-            if (data.error) {
-                toast.error(data.message || data.error);
-                return;
+            const data = await readApiResponse(res);
+            if (!Array.isArray(data.lines) || !data.reference_number) {
+                throw new Error('Unexpected generate payload');
             }
             setGeneratedData(data);
             setReferenceNumber(data.reference_number);
             setStatus('Done');
             toast.success('Delivery generated. Database and ledger updated.');
         } catch (err) {
-            toast.error('Generate failed');
+            toast.error(err.message || 'Generate failed');
         } finally {
             setGenerating(false);
         }
@@ -209,7 +227,8 @@ const NewDeliveryScreen = ({ onBack }) => {
         doc.line(margin, y, pageW - margin, y);
         y += 8;
         doc.setFont(undefined, 'bold');
-        doc.text(`Grand Total: ${generatedData.grand_total.toFixed(2)}`, margin + colW[0] + colW[1] + colW[2] + colW[3], y);
+        const grandTotal = Number(generatedData.grand_total) || 0;
+        doc.text(`Grand Total: ${grandTotal.toFixed(2)}`, margin + colW[0] + colW[1] + colW[2] + colW[3], y);
 
         doc.save(`Delivery_${generatedData.reference_number.replace(/\//g, '-')}.pdf`);
         toast.success('PDF downloaded');
@@ -407,7 +426,7 @@ const NewDeliveryScreen = ({ onBack }) => {
                                         ))}
                                     </tbody>
                                 </table>
-                                <p className="mt-4 text-right font-bold text-emerald-400">Grand Total: {generatedData.grand_total.toFixed(2)}</p>
+                                <p className="mt-4 text-right font-bold text-emerald-400">Grand Total: {(Number(generatedData.grand_total) || 0).toFixed(2)}</p>
                             </div>
                         ) : validatedLines.length > 0 ? (
                             <div className="overflow-x-auto">

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
     ArrowRight, Plus, Search, AlertCircle, CheckCircle2,
-    TrendingRight, Loader2, X
+    ArrowRightLeft, Loader2, X
 } from 'lucide-react';
 
 const TransfersPage = ({ username, onLogout }) => {
@@ -139,71 +139,60 @@ const TransfersPage = ({ username, onLogout }) => {
     );
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
-            {/* Success Message */}
+        <div className="flex-1 bg-[#0a0f1c] overflow-y-auto animate-[fade-in_0.6s_ease-out]">
             {successMessage && (
-                <div className="fixed top-4 right-4 bg-green-600 text-white px-6 py-3 rounded-lg flex items-center gap-2 shadow-lg">
-                    <CheckCircle2 size={20} />
+                <div className="fixed top-4 right-4 z-40 bg-emerald-500/90 text-white px-5 py-3 rounded-xl flex items-center gap-2 shadow-[0_0_20px_rgba(16,185,129,0.25)]">
+                    <CheckCircle2 size={18} />
                     {successMessage}
                 </div>
             )}
 
-            <div className="max-w-7xl mx-auto">
-                {/* Header */}
-                <div className="mb-8">
-                    <div className="flex items-center justify-between mb-2">
-                        <h1 className="text-3xl font-bold text-white flex items-center gap-3">
-                            <TrendingRight className="text-cyan-500" />
-                            Internal Transfers
-                        </h1>
-                        <button
-                            onClick={() => onLogout()}
-                            className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg"
-                        >
-                            Logout
-                        </button>
-                    </div>
-                    <p className="text-gray-400">Move stock between warehouses</p>
+            <div className="px-8 py-6 space-y-6">
+                <div>
+                    <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                        <ArrowRightLeft className="w-6 h-6 text-cyan-400" />
+                        Move History
+                    </h2>
+                    <p className="text-sm text-slate-400 mt-1">
+                        Monitor and create internal transfers between warehouses{username ? ` for ${username}` : ''}.
+                    </p>
                 </div>
 
-                {/* Statistics Cards */}
                 {statistics && (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-                        <div className="bg-slate-700 rounded-lg p-4">
-                            <p className="text-gray-400 text-sm">Total Transfers</p>
-                            <p className="text-2xl font-bold text-white">{statistics.total_transfers || 0}</p>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="bg-[#111827] border border-[#1e293b] rounded-2xl p-5">
+                            <p className="text-slate-400 text-sm">Total Transfers</p>
+                            <p className="text-2xl font-bold text-white mt-1">{statistics.total_transfers || 0}</p>
                         </div>
-                        <div className="bg-slate-700 rounded-lg p-4">
-                            <p className="text-gray-400 text-sm">Total Quantity Transferred</p>
-                            <p className="text-2xl font-bold text-white">{statistics.total_quantity_transferred || 0}</p>
+                        <div className="bg-[#111827] border border-[#1e293b] rounded-2xl p-5">
+                            <p className="text-slate-400 text-sm">Total Quantity Transferred</p>
+                            <p className="text-2xl font-bold text-white mt-1">{statistics.total_quantity_transferred || 0}</p>
                         </div>
-                        <div className="bg-slate-700 rounded-lg p-4">
-                            <p className="text-gray-400 text-sm">Unique Products Moved</p>
-                            <p className="text-2xl font-bold text-white">{statistics.unique_products || 0}</p>
+                        <div className="bg-[#111827] border border-[#1e293b] rounded-2xl p-5">
+                            <p className="text-slate-400 text-sm">Unique Products Moved</p>
+                            <p className="text-2xl font-bold text-white mt-1">{statistics.unique_products || 0}</p>
                         </div>
                     </div>
                 )}
 
-                {/* Create Transfer Form */}
                 {showForm && (
-                    <div className="bg-slate-700 rounded-lg p-6 mb-8 relative">
+                    <div className="bg-[#111827] border border-[#1e293b] rounded-2xl p-6 relative">
                         <button
                             onClick={() => setShowForm(false)}
-                            className="absolute top-4 right-4 p-2 hover:bg-slate-600 rounded-lg"
+                            className="absolute top-4 right-4 p-2 rounded-lg text-slate-500 hover:text-white hover:bg-[#1e293b] transition-all"
                         >
-                            <X size={20} className="text-gray-400" />
+                            <X size={18} />
                         </button>
 
-                        <h2 className="text-xl font-bold text-white mb-6">Create New Transfer</h2>
+                        <h3 className="text-lg font-bold text-white mb-5">Create New Transfer</h3>
                         <form onSubmit={handleSubmit} className="space-y-4">
-                            {/* Product Select */}
                             <div>
-                                <label className="block text-sm text-gray-300 mb-2">Product *</label>
+                                <label className="block text-sm text-slate-300 mb-2">Product *</label>
                                 <select
                                     name="product_id"
                                     value={formData.product_id}
                                     onChange={handleInputChange}
-                                    className="w-full bg-slate-600 border-b border-slate-500 text-white px-3 py-2 focus:border-cyan-500 focus:outline-none"
+                                    className="w-full bg-[#1e293b]/70 border border-[#334155]/60 rounded-xl text-white px-3 py-2.5 focus:ring-2 focus:ring-cyan-500/30 focus:border-cyan-500/50 focus:outline-none"
                                 >
                                     <option value="">Select Product</option>
                                     {products.map(p => (
@@ -214,15 +203,14 @@ const TransfersPage = ({ username, onLogout }) => {
                                 </select>
                             </div>
 
-                            {/* Warehouse Select */}
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-sm text-gray-300 mb-2">From Warehouse *</label>
+                                    <label className="block text-sm text-slate-300 mb-2">From Warehouse *</label>
                                     <select
                                         name="from_warehouse"
                                         value={formData.from_warehouse}
                                         onChange={handleInputChange}
-                                        className="w-full bg-slate-600 border-b border-slate-500 text-white px-3 py-2 focus:border-cyan-500 focus:outline-none"
+                                        className="w-full bg-[#1e293b]/70 border border-[#334155]/60 rounded-xl text-white px-3 py-2.5 focus:ring-2 focus:ring-cyan-500/30 focus:border-cyan-500/50 focus:outline-none"
                                     >
                                         <option value="">Select Source</option>
                                         {warehouses.map(w => (
@@ -233,12 +221,12 @@ const TransfersPage = ({ username, onLogout }) => {
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="block text-sm text-gray-300 mb-2">To Warehouse *</label>
+                                    <label className="block text-sm text-slate-300 mb-2">To Warehouse *</label>
                                     <select
                                         name="to_warehouse"
                                         value={formData.to_warehouse}
                                         onChange={handleInputChange}
-                                        className="w-full bg-slate-600 border-b border-slate-500 text-white px-3 py-2 focus:border-cyan-500 focus:outline-none"
+                                        className="w-full bg-[#1e293b]/70 border border-[#334155]/60 rounded-xl text-white px-3 py-2.5 focus:ring-2 focus:ring-cyan-500/30 focus:border-cyan-500/50 focus:outline-none"
                                     >
                                         <option value="">Select Destination</option>
                                         {warehouses.map(w => (
@@ -250,9 +238,8 @@ const TransfersPage = ({ username, onLogout }) => {
                                 </div>
                             </div>
 
-                            {/* Quantity */}
                             <div>
-                                <label className="block text-sm text-gray-300 mb-2">Quantity *</label>
+                                <label className="block text-sm text-slate-300 mb-2">Quantity *</label>
                                 <input
                                     type="number"
                                     name="quantity"
@@ -260,35 +247,33 @@ const TransfersPage = ({ username, onLogout }) => {
                                     onChange={handleInputChange}
                                     placeholder="Enter quantity"
                                     min="1"
-                                    className="w-full bg-slate-600 border-b border-slate-500 text-white px-3 py-2 focus:border-cyan-500 focus:outline-none"
+                                    className="w-full bg-[#1e293b]/70 border border-[#334155]/60 rounded-xl text-white px-3 py-2.5 focus:ring-2 focus:ring-cyan-500/30 focus:border-cyan-500/50 focus:outline-none"
                                 />
                             </div>
 
-                            {/* Notes */}
                             <div>
-                                <label className="block text-sm text-gray-300 mb-2">Notes</label>
+                                <label className="block text-sm text-slate-300 mb-2">Notes</label>
                                 <textarea
                                     name="notes"
                                     value={formData.notes}
                                     onChange={handleInputChange}
                                     placeholder="Add any notes about this transfer"
                                     rows="3"
-                                    className="w-full bg-slate-600 border-b border-slate-500 text-white px-3 py-2 focus:border-cyan-500 focus:outline-none"
+                                    className="w-full bg-[#1e293b]/70 border border-[#334155]/60 rounded-xl text-white px-3 py-2.5 focus:ring-2 focus:ring-cyan-500/30 focus:border-cyan-500/50 focus:outline-none"
                                 />
                             </div>
 
-                            {/* Submit Button */}
-                            <div className="flex gap-3 pt-4">
+                            <div className="flex gap-3 pt-2">
                                 <button
                                     type="submit"
-                                    className="flex-1 bg-cyan-600 hover:bg-cyan-700 text-white font-semibold py-2 rounded-lg transition"
+                                    className="flex-1 bg-cyan-500 hover:bg-cyan-400 text-white font-semibold py-2.5 rounded-xl transition-all"
                                 >
                                     Create Transfer
                                 </button>
                                 <button
                                     type="button"
                                     onClick={() => setShowForm(false)}
-                                    className="flex-1 bg-slate-600 hover:bg-slate-500 text-white font-semibold py-2 rounded-lg transition"
+                                    className="flex-1 bg-[#1e293b] hover:bg-[#263348] border border-[#334155] text-white font-semibold py-2.5 rounded-xl transition-all"
                                 >
                                     Cancel
                                 </button>
@@ -297,57 +282,55 @@ const TransfersPage = ({ username, onLogout }) => {
                     </div>
                 )}
 
-                {/* Search and Create Button */}
-                <div className="flex gap-4 mb-6">
+                <div className="flex flex-col sm:flex-row gap-4">
                     <div className="flex-1 relative">
-                        <Search className="absolute left-3 top-3 text-gray-400" size={20} />
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
                         <input
                             type="text"
-                            placeholder="Search transfers..."
+                            placeholder="Search by product or warehouse..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full bg-slate-700 border-b border-slate-600 text-white px-10 py-2 focus:border-cyan-500 focus:outline-none"
+                            className="w-full bg-[#1e293b]/70 border border-[#334155]/60 rounded-xl text-white pl-10 pr-4 py-2.5 focus:ring-2 focus:ring-cyan-500/30 focus:border-cyan-500/50 focus:outline-none"
                         />
                     </div>
                     <button
                         onClick={() => setShowForm(!showForm)}
-                        className="bg-cyan-600 hover:bg-cyan-700 text-white px-6 py-2 rounded-lg font-semibold flex items-center gap-2"
+                        className="bg-cyan-500 hover:bg-cyan-400 text-white px-5 py-2.5 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all"
                     >
-                        <Plus size={20} />
-                        Create Transfer
+                        <Plus size={18} />
+                        {showForm ? 'Hide Form' : 'Create Transfer'}
                     </button>
                 </div>
 
-                {/* Transfers List */}
                 {loading ? (
-                    <div className="flex items-center justify-center py-12">
-                        <Loader2 className="animate-spin text-cyan-500" size={32} />
+                    <div className="bg-[#111827] border border-[#1e293b] rounded-2xl p-12 flex items-center justify-center">
+                        <Loader2 className="animate-spin text-cyan-500" size={30} />
                     </div>
                 ) : filteredTransfers.length === 0 ? (
-                    <div className="bg-slate-700 rounded-lg p-12 text-center">
-                        <AlertCircle className="mx-auto mb-4 text-gray-400" size={32} />
-                        <p className="text-gray-400">No transfers found</p>
+                    <div className="bg-[#111827] border border-[#1e293b] rounded-2xl p-12 text-center">
+                        <AlertCircle className="mx-auto mb-3 text-slate-500" size={30} />
+                        <p className="text-slate-400">No transfers found</p>
                     </div>
                 ) : (
-                    <div className="bg-slate-700 rounded-lg overflow-hidden">
+                    <div className="bg-[#111827] border border-[#1e293b] rounded-2xl overflow-hidden">
                         {filteredTransfers.map((transfer, idx) => (
                             <div
                                 key={transfer.transfer_id}
-                                className={`border-b border-slate-600 p-4 ${idx % 2 === 0 ? 'bg-slate-700' : 'bg-slate-750'}`}
+                                className={`p-4 ${idx !== filteredTransfers.length - 1 ? 'border-b border-[#1e293b]' : ''}`}
                             >
-                                <div className="flex items-center justify-between">
-                                    <div className="flex-1">
-                                        <p className="text-white font-semibold">{transfer.product_name}</p>
-                                        <div className="flex items-center gap-2 mt-2 text-gray-400">
-                                            <span>{transfer.from_warehouse}</span>
-                                            <ArrowRight size={16} className="text-cyan-500" />
-                                            <span>{transfer.to_warehouse}</span>
+                                <div className="flex items-center justify-between gap-4">
+                                    <div className="min-w-0 flex-1">
+                                        <p className="text-white font-semibold truncate">{transfer.product_name}</p>
+                                        <div className="flex items-center gap-2 mt-1.5 text-slate-400 text-sm">
+                                            <span className="truncate">{transfer.from_warehouse}</span>
+                                            <ArrowRight size={14} className="text-cyan-500 flex-shrink-0" />
+                                            <span className="truncate">{transfer.to_warehouse}</span>
                                         </div>
                                     </div>
-                                    <div className="text-right">
+                                    <div className="text-right flex-shrink-0">
                                         <p className="text-white font-bold text-lg">{transfer.quantity}</p>
-                                        <p className="text-gray-400 text-sm">{transfer.transferred_by}</p>
-                                        <p className="text-gray-500 text-xs mt-1">
+                                        <p className="text-slate-400 text-sm">{transfer.transferred_by}</p>
+                                        <p className="text-slate-500 text-xs mt-1">
                                             {new Date(transfer.transferred_at).toLocaleDateString()}
                                         </p>
                                     </div>

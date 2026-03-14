@@ -10,6 +10,7 @@ import NewReceiptScreen from './components/NewReceiptScreen.jsx';
 import NewDeliveryScreen from './components/NewDeliveryScreen.jsx';
 import Sidebar from './components/Sidebar.jsx';
 import StockScreen from './components/StockScreen.jsx';
+import TransfersPage from './components/TransfersPage.jsx';
 import WaitingForApproval from './components/WaitingForApproval.jsx';
 import SettingsScreen from './components/SettingsScreen.jsx';
 import { ToastContainer } from 'react-toastify';
@@ -141,6 +142,25 @@ function App() {
     setAuthView('landing');
   };
 
+  const handleMainNavigate = (target) => {
+    const viewMap = {
+      '/': 'dashboard',
+      '/dashboard': 'dashboard',
+      '/receipt': 'operations',
+      '/delivery': 'delivery',
+      '/move-history': 'move-history',
+      '/operation/new': 'operation-new',
+      '/delivery/new': 'delivery-new'
+    };
+
+    if (typeof target === 'string' && viewMap[target]) {
+      setActiveView(viewMap[target]);
+      return;
+    }
+
+    setActiveView(target || 'dashboard');
+  };
+
   // Netflix Intro Screen
   if (showIntro) {
     return <NetflixIntro onComplete={handleIntroComplete} />;
@@ -197,10 +217,46 @@ function App() {
             onNav={setActiveView}
             onLogout={handleLogout}
           />
-          {activeView === 'settings' ? (
-            <SettingsScreen username={username} userRole={userRole || 'staff'} />
-          ) : (
-            <Dashboard username={username} />
+          {activeView === 'settings' && <SettingsScreen username={username} userRole={userRole || 'staff'} />}
+          {activeView === 'stock' && (
+            <StockScreen
+              username={username}
+              role={userRole || 'staff'}
+              onLogout={handleLogout}
+              onNavigate={setActiveView}
+            />
+          )}
+          {activeView === 'operations' && (
+            <OperationsScreen
+              type="receipt"
+              title="Receipt"
+              subtitle="Manage incoming inventory receipts"
+              accentColor="text-emerald-400"
+              onNewClick={() => setActiveView('operation-new')}
+              onBack={() => setActiveView('dashboard')}
+            />
+          )}
+          {activeView === 'delivery' && (
+            <OperationsScreen
+              type="delivery"
+              title="Delivery"
+              subtitle="Manage outgoing shipments"
+              accentColor="text-purple-400"
+              onNewClick={() => setActiveView('delivery-new')}
+              onBack={() => setActiveView('dashboard')}
+            />
+          )}
+          {activeView === 'operation-new' && (
+            <NewReceiptScreen onBack={() => setActiveView('operations')} />
+          )}
+          {activeView === 'delivery-new' && (
+            <NewDeliveryScreen onBack={() => setActiveView('delivery')} />
+          )}
+          {activeView === 'move-history' && (
+            <TransfersPage username={username} onLogout={handleLogout} />
+          )}
+          {activeView === 'dashboard' && (
+            <Dashboard username={username} onNavigate={handleMainNavigate} />
           )}
         </div>
         <ToastContainer

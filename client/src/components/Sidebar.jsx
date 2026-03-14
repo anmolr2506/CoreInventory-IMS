@@ -22,7 +22,7 @@ const navItems = [
 const Sidebar = ({ username, role = 'staff', activeItem = 'dashboard', onLogout, onNav }) => {
 
     const handleNavClick = (item) => {
-        const inAppViews = new Set(['dashboard', 'stock', 'settings']);
+        const inAppViews = new Set(['dashboard', 'operations', 'delivery', 'stock', 'move-history', 'settings']);
         if (onNav && inAppViews.has(item.id)) {
             onNav(item.id);
             return;

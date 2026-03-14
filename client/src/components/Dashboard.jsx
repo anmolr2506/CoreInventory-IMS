@@ -279,7 +279,7 @@ const Dashboard = ({ username, onNavigate }) => {
 
                     {/* Activity */}
                     <div
-                        onClick={() => openDetailTab('Activity Log', `Recent activity: ${s.activity?.today || 0} operations today, ${s.activity?.thisWeek || 0} this week, ${s.activity?.thisMonth || 0} this month.`)}
+                        onClick={() => onNavigate ? onNavigate('/move-history') : openDetailTab('Activity Log', `Recent activity: ${s.activity?.today || 0} operations today, ${s.activity?.thisWeek || 0} this week, ${s.activity?.thisMonth || 0} this month.`)}
                         className="bg-[#111827] border border-[#1e293b] rounded-2xl p-6 hover:border-blue-500/30 hover:shadow-[0_0_20px_rgba(59,130,246,0.08)] transition-all duration-300 cursor-pointer group"
                     >
                         <div className="flex items-center justify-between mb-5">

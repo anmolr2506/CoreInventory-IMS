@@ -7,6 +7,26 @@ import { toast } from 'react-toastify';
 
 const API_BASE = 'http://localhost:5000';
 
+const readApiResponse = async (res) => {
+    let data = null;
+    try {
+        data = await res.json();
+    } catch {
+        data = null;
+    }
+
+    if (!res.ok) {
+        const message = (typeof data === 'string' ? data : data?.message || data?.error) || 'Request failed';
+        throw new Error(message);
+    }
+
+    if (!data || typeof data !== 'object') {
+        throw new Error('Unexpected server response');
+    }
+
+    return data;
+};
+
 const NewReceiptScreen = ({ onBack }) => {
     const [dropdowns, setDropdowns] = useState({ products: [], suppliers: [], warehouses: [], users: [] });
     const [loading, setLoading] = useState(true);
@@ -31,10 +51,10 @@ const NewReceiptScreen = ({ onBack }) => {
                 const res = await fetch(`${API_BASE}/api/receipts/dropdowns`, {
                     headers: { Authorization: `Bearer ${token}` },
                 });
-                const data = await res.json();
+                const data = await readApiResponse(res);
                 setDropdowns(data);
             } catch (err) {
-                toast.error('Failed to load dropdowns');
+                toast.error(err.message || 'Failed to load dropdowns');
             } finally {
                 setLoading(false);
             }
@@ -77,16 +97,15 @@ const NewReceiptScreen = ({ onBack }) => {
                     lines: filtered.map((l) => ({ product_id: parseInt(l.product_id), quantity: parseInt(l.quantity) })),
                 }),
             });
-            const data = await res.json();
-            if (data.error) {
-                toast.error(data.error);
-                return;
+            const data = await readApiResponse(res);
+            if (!Array.isArray(data.lines)) {
+                throw new Error('Unexpected validation payload');
             }
             setValidatedLines(data.lines);
             setStatus('Ready');
             toast.success('Receipt validated. Prices fetched.');
         } catch (err) {
-            toast.error('Validation failed');
+            toast.error(err.message || 'Validation failed');
         } finally {
             setValidating(false);
         }
@@ -118,17 +137,16 @@ const NewReceiptScreen = ({ onBack }) => {
                     })),
                 }),
             });
-            const data = await res.json();
-            if (data.error) {
-                toast.error(data.error);
-                return;
+            const data = await readApiResponse(res);
+            if (!Array.isArray(data.lines) || !data.reference_number) {
+                throw new Error('Unexpected generate payload');
             }
             setGeneratedData(data);
             setReferenceNumber(data.reference_number);
             setStatus('Done');
             toast.success('Receipt generated. Database and ledger updated.');
         } catch (err) {
-            toast.error('Generate failed');
+            toast.error(err.message || 'Generate failed');
         } finally {
             setGenerating(false);
         }
@@ -157,7 +175,7 @@ const NewReceiptScreen = ({ onBack }) => {
         doc.text('Supplier Details', margin, y);
         y += 6;
         doc.setFontSize(9);
-        const s = generatedData.supplier;
+        const s = generatedData.supplier || {};
         doc.text(`Name: ${s.name || ''}`, margin, y);
         y += 5;
         doc.text(`Contact: ${s.contact_person || ''} | ${s.email || ''} | ${s.phone || ''}`, margin, y);
@@ -169,7 +187,7 @@ const NewReceiptScreen = ({ onBack }) => {
         doc.text('Warehouse', margin, y);
         y += 6;
         doc.setFontSize(9);
-        const w = generatedData.warehouse;
+        const w = generatedData.warehouse || {};
         doc.text(`${w.name || ''} - ${w.location || ''}`, margin, y);
         y += 12;
 
@@ -213,7 +231,8 @@ const NewReceiptScreen = ({ onBack }) => {
         doc.line(margin, y, pageW - margin, y);
         y += 8;
         doc.setFont(undefined, 'bold');
-        doc.text(`Grand Total: ${generatedData.grand_total.toFixed(2)}`, margin + colW[0] + colW[1] + colW[2] + colW[3], y);
+        const grandTotal = Number(generatedData.grand_total) || 0;
+        doc.text(`Grand Total: ${grandTotal.toFixed(2)}`, margin + colW[0] + colW[1] + colW[2] + colW[3], y);
 
         doc.save(`Receipt_${generatedData.reference_number.replace(/\//g, '-')}.pdf`);
         toast.success('PDF downloaded');
@@ -425,7 +444,7 @@ const NewReceiptScreen = ({ onBack }) => {
                                         ))}
                                     </tbody>
                                 </table>
-                                <p className="mt-4 text-right font-bold text-emerald-400">Grand Total: {generatedData.grand_total.toFixed(2)}</p>
+                                <p className="mt-4 text-right font-bold text-emerald-400">Grand Total: {(Number(generatedData.grand_total) || 0).toFixed(2)}</p>
                             </div>
                         ) : validatedLines.length > 0 ? (
                             <div className="overflow-x-auto">
@@ -446,12 +465,12 @@ const NewReceiptScreen = ({ onBack }) => {
                                                 <td className="py-3 pr-4 text-slate-400">{l.sku}</td>
                                                 <td className="py-3 pr-4 text-slate-300">{l.quantity} {l.unit}</td>
                                                 <td className="py-3 pr-4 text-slate-300">{l.unit_price}</td>
-                                                <td className="py-3 text-emerald-400">{l.line_total.toFixed(2)}</td>
+                                                <td className="py-3 text-emerald-400">{(Number(l.line_total) || 0).toFixed(2)}</td>
                                             </tr>
                                         ))}
                                     </tbody>
                                 </table>
-                                <p className="mt-4 text-right font-bold text-emerald-400">Grand Total: {validatedLines.reduce((s, l) => s + l.line_total, 0).toFixed(2)}</p>
+                                <p className="mt-4 text-right font-bold text-emerald-400">Grand Total: {validatedLines.reduce((sum, l) => sum + (Number(l.line_total) || 0), 0).toFixed(2)}</p>
                             </div>
                         ) : (
                             <div className="space-y-3">
