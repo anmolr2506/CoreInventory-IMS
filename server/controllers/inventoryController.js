@@ -39,11 +39,12 @@ const getUserContext = async (userId) => {
 	};
 };
 
-const buildCacheKey = ({ userId, role, warehouseIds, search, limit, offset }) => {
+const buildCacheKey = ({ userId, role, warehouseIds, selectedWarehouseId, search, limit, offset }) => {
 	return [
 		userId,
 		role,
 		warehouseIds.join(","),
+		selectedWarehouseId || "",
 		search || "",
 		limit,
 		offset
@@ -67,6 +68,14 @@ const getStockInventory = async (req, res) => {
 		}
 
 		const search = (req.query.search || "").trim();
+		const selectedWarehouseId = req.query.warehouse_id
+			? parseInt(req.query.warehouse_id, 10)
+			: null;
+
+		if (selectedWarehouseId !== null && (Number.isNaN(selectedWarehouseId) || selectedWarehouseId <= 0)) {
+			return res.status(400).json("Invalid warehouse_id");
+		}
+
 		const limit = sanitizePagination(req.query.limit, 50, 200);
 		const offset = sanitizePagination(req.query.offset, 0, 100000);
 
@@ -74,6 +83,7 @@ const getStockInventory = async (req, res) => {
 			userId,
 			role: userContext.role,
 			warehouseIds: userContext.warehouseIds,
+			selectedWarehouseId,
 			search,
 			limit,
 			offset
@@ -98,6 +108,11 @@ const getStockInventory = async (req, res) => {
 			}
 			params.push(userContext.warehouseIds);
 			whereClauses.push(`i.warehouse_id = ANY($${params.length}::int[])`);
+		}
+
+		if (selectedWarehouseId !== null) {
+			params.push(selectedWarehouseId);
+			whereClauses.push(`i.warehouse_id = $${params.length}`);
 		}
 
 		const whereSql = whereClauses.length > 0 ? `WHERE ${whereClauses.join(" AND ")}` : "";

@@ -16,13 +16,28 @@ const getProductCategories = async (_req, res) => {
 const getProductsWithLocation = async (req, res) => {
 	try {
 		const search = (req.query.search || "").trim();
+		const selectedWarehouseId = req.query.warehouse_id
+			? parseInt(req.query.warehouse_id, 10)
+			: null;
+
+		if (selectedWarehouseId !== null && (Number.isNaN(selectedWarehouseId) || selectedWarehouseId <= 0)) {
+			return res.status(400).json("Invalid warehouse_id");
+		}
+
 		const params = [];
-		let whereSql = "";
+		const whereClauses = [];
 
 		if (search) {
 			params.push(`%${search}%`);
-			whereSql = "WHERE p.name ILIKE $1 OR p.sku ILIKE $1";
+			whereClauses.push(`(p.name ILIKE $${params.length} OR p.sku ILIKE $${params.length})`);
 		}
+
+		if (selectedWarehouseId !== null) {
+			params.push(selectedWarehouseId);
+			whereClauses.push(`w.warehouse_id = $${params.length}`);
+		}
+
+		const whereSql = whereClauses.length > 0 ? `WHERE ${whereClauses.join(" AND ")}` : "";
 
 		const result = await pool.query(
 			`
