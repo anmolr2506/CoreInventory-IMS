@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { LogOut, Settings, Users, Warehouse } from 'lucide-react';
+import { LogOut, Settings, Users, Warehouse, CheckCircle2 } from 'lucide-react';
+import ApprovalRequests from './ApprovalRequests.jsx';
 
 const AdminDashboard = ({ username, onLogout }) => {
     const [activeTab, setActiveTab] = useState('overview');
@@ -28,6 +29,7 @@ const AdminDashboard = ({ username, onLogout }) => {
                 <div className="flex space-x-4 mb-6 border-b border-[#27354f]">
                     {[
                         { id: 'overview', label: 'Overview', icon: Settings },
+                        { id: 'approvals', label: 'User Approvals', icon: CheckCircle2 },
                         { id: 'users', label: 'Manage Users', icon: Users },
                         { id: 'warehouses', label: 'Manage Warehouses', icon: Warehouse }
                     ].map(tab => (
@@ -45,6 +47,11 @@ const AdminDashboard = ({ username, onLogout }) => {
                         </button>
                     ))}
                 </div>
+
+                {/* Approvals Tab */}
+                {activeTab === 'approvals' && (
+                    <ApprovalRequests username={username} userRole="admin" />
+                )}
 
                 {/* Overview Tab */}
                 {activeTab === 'overview' && (

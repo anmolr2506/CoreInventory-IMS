@@ -1,13 +1,23 @@
 const router = require("express").Router();
 const authorizeToken = require("../middleware/authMiddleware");
 const { checkRole, checkWarehouseAccess } = require("../middleware/roleAuthorization");
+const {
+    getAllInventory,
+    getProductInventory,
+    getWarehouseInventory,
+    createAdjustment,
+    getAllAdjustments,
+    getAdjustment,
+    getInventoryStats,
+    getLowStockAlerts
+} = require("../controllers/inventoryController");
 const pool = require("../db");
 const { logOperation } = require("../utils/auditLog");
 
 /**
  * Inventory Routes with Role-Based Access Control
  * 
- * MANAGERS: Can create receipts, deliveries, view all inventory
+ * MANAGERS: Can create receipts, deliveries, view all inventory, create adjustments
  * STAFF: Can view their warehouse inventory
  * ADMIN: Full access
  */

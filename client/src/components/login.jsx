@@ -30,6 +30,9 @@ const Login = ({ onToggleForm, onToggleForgotPassword, onLoginSuccess }) => {
                 localStorage.setItem("username", parseRes.username || 'User');
                 localStorage.setItem("role", parseRes.role || 'staff');
                 localStorage.setItem("user_id", parseRes.user_id);
+                localStorage.setItem("is_approved", parseRes.is_approved !== undefined ? parseRes.is_approved : true);
+                localStorage.setItem("approval_status", parseRes.approval_status || 'approved');
+                if (parseRes.created_at) localStorage.setItem("created_at", parseRes.created_at);
                 
                 // Store warehouse assignments for staff
                 if (parseRes.warehouses && parseRes.warehouses.length > 0) {
@@ -41,7 +44,10 @@ const Login = ({ onToggleForm, onToggleForgotPassword, onLoginSuccess }) => {
                     username: parseRes.username || 'User',
                     role: parseRes.role,
                     warehouses: parseRes.warehouses || [],
-                    user_id: parseRes.user_id
+                    user_id: parseRes.user_id,
+                    is_approved: parseRes.is_approved !== undefined ? parseRes.is_approved : true,
+                    approval_status: parseRes.approval_status || 'approved',
+                    created_at: parseRes.created_at || ''
                 });
             } else {
                 toast.error(parseRes); 
