@@ -13,6 +13,7 @@ const {
 } = require("../controllers/inventoryController");
 const pool = require("../db");
 const { logOperation } = require("../utils/auditLog");
+const { getStockInventory, updateStockInventory } = require("../controllers/inventoryController");
 
 /**
  * Inventory Routes with Role-Based Access Control
@@ -95,6 +96,12 @@ router.get("/inventory", authorizeToken, async (req, res) => {
         res.status(500).json("Server Error");
     }
 });
+
+// Stock screen inventory endpoint (optimized for inline editing use case)
+router.get("/inventory/stock", authorizeToken, getStockInventory);
+
+// Inline stock update (admin/manager only)
+router.patch("/inventory/stock/:inventory_id", authorizeToken, updateStockInventory);
 
 // Get inventory for specific warehouse
 router.get("/inventory/warehouse/:warehouse_id", authorizeToken, checkWarehouseAccess, async (req, res) => {

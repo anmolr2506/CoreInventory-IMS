@@ -1,431 +1,286 @@
 const pool = require("../db");
 const { logOperation } = require("../utils/auditLog");
 
-/**
- * Inventory Controller
- * Handles inventory operations:
- * - Stock adjustments (physical count mismatches)
- * - Inventory counts and reports
- */
+const STOCK_CACHE_TTL_MS = 15000;
+const stockCache = new Map();
 
-/**
- * Get all inventory items across all warehouses
- */
-const getAllInventory = async (req, res) => {
-    try {
-        const { warehouse_id, product_id } = req.query;
-
-        let query = `
-            SELECT 
-                i.inventory_id,
-                i.product_id,
-                p.name as product_name,
-                p.sku,
-                p.reorder_level,
-                c.name as category,
-                i.warehouse_id,
-                w.name as warehouse_name,
-                w.short_code as warehouse_code,
-                i.quantity,
-                CASE 
-                    WHEN i.quantity = 0 THEN 'out_of_stock'
-                    WHEN i.quantity <= p.reorder_level THEN 'low_stock'
-                    ELSE 'in_stock'
-                END as status,
-                i.last_updated
-            FROM inventory i
-            JOIN products p ON i.product_id = p.product_id
-            JOIN warehouses w ON i.warehouse_id = w.warehouse_id
-            LEFT JOIN categories c ON p.category_id = c.category_id
-            WHERE 1=1
-        `;
-
-        const params = [];
-
-        if (warehouse_id) {
-            params.push(warehouse_id);
-            query += ` AND i.warehouse_id = $${params.length}`;
-        }
-
-        if (product_id) {
-            params.push(product_id);
-            query += ` AND i.product_id = $${params.length}`;
-        }
-
-        query += ` ORDER BY p.name, w.name`;
-
-        const result = await pool.query(query, params);
-        res.json({
-            success: true,
-            data: result.rows,
-            count: result.rows.length
-        });
-    } catch (err) {
-        console.error("Error fetching inventory:", err.message);
-        res.status(500).json({ success: false, error: err.message });
-    }
+const sanitizePagination = (value, fallback, maxValue) => {
+	const parsed = parseInt(value, 10);
+	if (Number.isNaN(parsed) || parsed < 0) {
+		return fallback;
+	}
+	return Math.min(parsed, maxValue);
 };
 
-/**
- * Get inventory for a specific product across all warehouses
- */
-const getProductInventory = async (req, res) => {
-    try {
-        const { product_id } = req.params;
+const getUserContext = async (userId) => {
+	const userResult = await pool.query(
+		"SELECT role FROM users WHERE user_id = $1 AND is_active = true",
+		[userId]
+	);
 
-        const result = await pool.query(
-            `SELECT 
-                i.inventory_id,
-                i.product_id,
-                p.name as product_name,
-                p.sku,
-                p.unit,
-                w.warehouse_id,
-                w.name as warehouse_name,
-                i.quantity,
-                i.last_updated
-            FROM inventory i
-            JOIN products p ON i.product_id = p.product_id
-            JOIN warehouses w ON i.warehouse_id = w.warehouse_id
-            WHERE p.product_id = $1
-            ORDER BY w.name`,
-            [product_id]
-        );
+	if (userResult.rows.length === 0) {
+		return null;
+	}
 
-        res.json({
-            success: true,
-            data: result.rows,
-            total_quantity: result.rows.reduce((sum, row) => sum + row.quantity, 0)
-        });
-    } catch (err) {
-        console.error("Error fetching product inventory:", err.message);
-        res.status(500).json({ success: false, error: err.message });
-    }
+	const role = userResult.rows[0].role;
+
+	if (role === "admin" || role === "manager") {
+		return { role, warehouseIds: [] };
+	}
+
+	const warehouseResult = await pool.query(
+		"SELECT warehouse_id FROM warehouse_assignments WHERE user_id = $1",
+		[userId]
+	);
+
+	return {
+		role,
+		warehouseIds: warehouseResult.rows.map((row) => row.warehouse_id)
+	};
 };
 
-/**
- * Get inventory for a specific warehouse
- */
-const getWarehouseInventory = async (req, res) => {
-    try {
-        const { warehouse_id } = req.params;
-
-        const result = await pool.query(
-            `SELECT 
-                i.inventory_id,
-                p.product_id,
-                p.name as product_name,
-                p.sku,
-                p.unit,
-                p.reorder_level,
-                c.name as category,
-                i.quantity,
-                CASE 
-                    WHEN i.quantity = 0 THEN 'out_of_stock'
-                    WHEN i.quantity <= p.reorder_level THEN 'low_stock'
-                    ELSE 'in_stock'
-                END as status,
-                i.last_updated
-            FROM inventory i
-            JOIN products p ON i.product_id = p.product_id
-            JOIN warehouses w ON i.warehouse_id = w.warehouse_id
-            LEFT JOIN categories c ON p.category_id = c.category_id
-            WHERE w.warehouse_id = $1
-            ORDER BY p.name`,
-            [warehouse_id]
-        );
-
-        res.json({
-            success: true,
-            warehouse_id,
-            data: result.rows,
-            total_items: result.rows.length,
-            total_quantity: result.rows.reduce((sum, row) => sum + row.quantity, 0)
-        });
-    } catch (err) {
-        console.error("Error fetching warehouse inventory:", err.message);
-        res.status(500).json({ success: false, error: err.message });
-    }
+const buildCacheKey = ({ userId, role, warehouseIds, search, limit, offset }) => {
+	return [
+		userId,
+		role,
+		warehouseIds.join(","),
+		search || "",
+		limit,
+		offset
+	].join("|");
 };
 
-/**
- * Create a stock adjustment (fix physical count mismatches)
- * Automatically updates inventory and logs the adjustment
- */
-const createAdjustment = async (req, res) => {
-    const client = await pool.connect();
-    try {
-        const { product_id, warehouse_id, counted_quantity, reason } = req.body;
-        const userId = req.user.id;
-
-        // Validate input
-        if (!product_id || warehouse_id === undefined || counted_quantity === undefined || !reason) {
-            return res.status(400).json({
-                success: false,
-                error: "Missing required fields: product_id, warehouse_id, counted_quantity, reason"
-            });
-        }
-
-        if (counted_quantity < 0) {
-            return res.status(400).json({
-                success: false,
-                error: "Counted quantity cannot be negative"
-            });
-        }
-
-        // Get current recorded quantity
-        const currentResult = await client.query(
-            `SELECT quantity FROM inventory 
-            WHERE product_id = $1 AND warehouse_id = $2`,
-            [product_id, warehouse_id]
-        );
-
-        const recordedQuantity = currentResult.rows[0]?.quantity || 0;
-        const adjustment = counted_quantity - recordedQuantity;
-
-        // Start transaction
-        await client.query("BEGIN");
-
-        // Update inventory
-        if (counted_quantity === 0) {
-            // Delete inventory record if count is zero
-            await client.query(
-                `DELETE FROM inventory WHERE product_id = $1 AND warehouse_id = $2`,
-                [product_id, warehouse_id]
-            );
-        } else {
-            await client.query(
-                `INSERT INTO inventory (product_id, warehouse_id, quantity) 
-                VALUES ($1, $2, $3) 
-                ON CONFLICT (product_id, warehouse_id) 
-                DO UPDATE SET quantity = $3`,
-                [product_id, warehouse_id, counted_quantity]
-            );
-        }
-
-        // Create adjustment record
-        const adjustmentResult = await client.query(
-            `INSERT INTO stock_adjustments (product_id, warehouse_id, adjustment, reason, adjusted_by) 
-            VALUES ($1, $2, $3, $4, $5) 
-            RETURNING *`,
-            [product_id, warehouse_id, adjustment, reason, userId]
-        );
-
-        const adjustmentId = adjustmentResult.rows[0].adjustment_id;
-
-        // Log to stock ledger
-        await client.query(
-            `INSERT INTO stock_ledger (product_id, warehouse_id, operation_type, quantity, reference_id) 
-            VALUES ($1, $2, 'ADJUSTMENT', $3, $4)`,
-            [product_id, warehouse_id, adjustment, adjustmentId]
-        );
-
-        // Log operation
-        await logOperation(userId, 'STOCK_ADJUSTED', {
-            adjustment_id: adjustmentId,
-            product_id,
-            warehouse_id,
-            recorded_quantity: recordedQuantity,
-            counted_quantity,
-            adjustment,
-            reason
-        }, adjustmentId);
-
-        await client.query("COMMIT");
-
-        res.status(201).json({
-            success: true,
-            message: `Stock adjusted by ${adjustment > 0 ? '+' : ''}${adjustment}`,
-            adjustment: adjustmentResult.rows[0]
-        });
-    } catch (err) {
-        await client.query("ROLLBACK");
-        console.error("Error creating adjustment:", err.message);
-        res.status(400).json({ success: false, error: err.message });
-    } finally {
-        client.release();
-    }
+const clearStockCache = () => {
+	stockCache.clear();
 };
 
-/**
- * Get all stock adjustments
- */
-const getAllAdjustments = async (req, res) => {
-    try {
-        const { warehouse_id, product_id, limit = 100, offset = 0 } = req.query;
+const getStockInventory = async (req, res) => {
+	try {
+		const userId = req.user?.id ?? req.user;
+		if (!userId) {
+			return res.status(401).json("Unauthorized");
+		}
 
-        let query = `
-            SELECT 
-                a.adjustment_id,
-                p.product_id,
-                p.name as product_name,
-                p.sku,
-                w.warehouse_id,
-                w.name as warehouse_name,
-                a.adjustment,
-                a.reason,
-                u.name as adjusted_by,
-                a.adjusted_at
-            FROM stock_adjustments a
-            JOIN products p ON a.product_id = p.product_id
-            JOIN warehouses w ON a.warehouse_id = w.warehouse_id
-            JOIN users u ON a.adjusted_by = u.user_id
-            WHERE 1=1
-        `;
+		const userContext = await getUserContext(userId);
+		if (!userContext) {
+			return res.status(401).json("Unauthorized");
+		}
 
-        const params = [];
+		const search = (req.query.search || "").trim();
+		const limit = sanitizePagination(req.query.limit, 50, 200);
+		const offset = sanitizePagination(req.query.offset, 0, 100000);
 
-        if (warehouse_id) {
-            params.push(warehouse_id);
-            query += ` AND a.warehouse_id = $${params.length}`;
-        }
+		const cacheKey = buildCacheKey({
+			userId,
+			role: userContext.role,
+			warehouseIds: userContext.warehouseIds,
+			search,
+			limit,
+			offset
+		});
 
-        if (product_id) {
-            params.push(product_id);
-            query += ` AND a.product_id = $${params.length}`;
-        }
+		const cachedEntry = stockCache.get(cacheKey);
+		if (cachedEntry && cachedEntry.expiresAt > Date.now()) {
+			return res.json(cachedEntry.data);
+		}
 
-        query += ` ORDER BY a.adjusted_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
-        params.push(limit, offset);
+		const whereClauses = [];
+		const params = [];
 
-        const result = await pool.query(query, params);
-        res.json({
-            success: true,
-            data: result.rows,
-            count: result.rows.length
-        });
-    } catch (err) {
-        console.error("Error fetching adjustments:", err.message);
-        res.status(500).json({ success: false, error: err.message });
-    }
+		if (search) {
+			params.push(`%${search}%`);
+			whereClauses.push(`p.name ILIKE $${params.length}`);
+		}
+
+		if (userContext.role === "staff") {
+			if (userContext.warehouseIds.length === 0) {
+				return res.json({ rows: [], canEdit: false, total: 0 });
+			}
+			params.push(userContext.warehouseIds);
+			whereClauses.push(`i.warehouse_id = ANY($${params.length}::int[])`);
+		}
+
+		const whereSql = whereClauses.length > 0 ? `WHERE ${whereClauses.join(" AND ")}` : "";
+
+		params.push(limit);
+		const limitIndex = params.length;
+		params.push(offset);
+		const offsetIndex = params.length;
+
+		const result = await pool.query(
+			`
+			SELECT
+				i.inventory_id,
+				p.product_id,
+				p.name AS product,
+				w.warehouse_id,
+				w.name AS warehouse,
+				COALESCE(sp.price, 0) AS per_unit_cost,
+				i.quantity AS on_hand,
+				GREATEST(i.quantity - i.reserved_quantity, 0) AS free_to_use,
+				COUNT(*) OVER() AS total_count
+			FROM inventory i
+			JOIN products p ON p.product_id = i.product_id
+			JOIN warehouses w ON w.warehouse_id = i.warehouse_id
+			LEFT JOIN LATERAL (
+				SELECT price
+				FROM supplier_products
+				WHERE product_id = p.product_id
+				ORDER BY lead_time_days ASC NULLS LAST, supplier_id ASC
+				LIMIT 1
+			) sp ON true
+			${whereSql}
+			ORDER BY p.name ASC, w.name ASC
+			LIMIT $${limitIndex}
+			OFFSET $${offsetIndex}
+			`,
+			params
+		);
+
+		const responsePayload = {
+			canEdit: userContext.role === "admin" || userContext.role === "manager",
+			total: result.rows.length > 0 ? parseInt(result.rows[0].total_count, 10) : 0,
+			rows: result.rows.map((row) => ({
+				inventory_id: row.inventory_id,
+				product_id: row.product_id,
+				product: row.product,
+				warehouse_id: row.warehouse_id,
+				warehouse: row.warehouse,
+				per_unit_cost: Number(row.per_unit_cost),
+				on_hand: Number(row.on_hand),
+				free_to_use: Number(row.free_to_use)
+			}))
+		};
+
+		stockCache.set(cacheKey, {
+			data: responsePayload,
+			expiresAt: Date.now() + STOCK_CACHE_TTL_MS
+		});
+
+		return res.json(responsePayload);
+	} catch (err) {
+		console.error("Error fetching stock inventory:", err.message);
+		return res.status(500).json("Server Error");
+	}
 };
 
-/**
- * Get adjustment details
- */
-const getAdjustment = async (req, res) => {
-    try {
-        const { adjustment_id } = req.params;
+const updateStockInventory = async (req, res) => {
+	const client = await pool.connect();
+	try {
+		const userId = req.user?.id ?? req.user;
+		if (!userId) {
+			return res.status(401).json("Unauthorized");
+		}
 
-        const result = await pool.query(
-            `SELECT 
-                a.adjustment_id,
-                p.product_id,
-                p.name as product_name,
-                p.sku,
-                w.warehouse_id,
-                w.name as warehouse_name,
-                a.adjustment,
-                a.reason,
-                u.name as adjusted_by,
-                a.adjusted_at
-            FROM stock_adjustments a
-            JOIN products p ON a.product_id = p.product_id
-            JOIN warehouses w ON a.warehouse_id = w.warehouse_id
-            JOIN users u ON a.adjusted_by = u.user_id
-            WHERE a.adjustment_id = $1`,
-            [adjustment_id]
-        );
+		const userContext = await getUserContext(userId);
+		if (!userContext) {
+			return res.status(401).json("Unauthorized");
+		}
 
-        if (result.rows.length === 0) {
-            return res.status(404).json({ success: false, error: "Adjustment not found" });
-        }
+		if (userContext.role !== "admin" && userContext.role !== "manager") {
+			return res.status(403).json("Forbidden: Only managers or admins can update stock");
+		}
 
-        res.json({ success: true, data: result.rows[0] });
-    } catch (err) {
-        console.error("Error fetching adjustment:", err.message);
-        res.status(500).json({ success: false, error: err.message });
-    }
-};
+		const inventoryId = parseInt(req.params.inventory_id, 10);
+		const onHand = parseInt(req.body.on_hand, 10);
+		const freeToUse = parseInt(req.body.free_to_use, 10);
 
-/**
- * Get inventory statistics and alerts
- */
-const getInventoryStats = async (req, res) => {
-    try {
-        const { warehouse_id } = req.query;
+		if (Number.isNaN(inventoryId) || inventoryId <= 0) {
+			return res.status(400).json("Invalid inventory_id");
+		}
 
-        let warehouseFilter = '';
-        const params = [];
+		if (Number.isNaN(onHand) || Number.isNaN(freeToUse) || onHand < 0 || freeToUse < 0) {
+			return res.status(400).json("on_hand and free_to_use must be non-negative integers");
+		}
 
-        if (warehouse_id) {
-            params.push(warehouse_id);
-            warehouseFilter = ` WHERE i.warehouse_id = $1`;
-        }
+		if (freeToUse > onHand) {
+			return res.status(400).json("free_to_use cannot be greater than on_hand");
+		}
 
-        const statsResult = await pool.query(`
-            SELECT 
-                COUNT(DISTINCT i.product_id) as total_products,
-                SUM(i.quantity) as total_stock,
-                COUNT(CASE WHEN i.quantity = 0 THEN 1 END) as out_of_stock_count,
-                COUNT(CASE WHEN i.quantity <= p.reorder_level THEN 1 END) as low_stock_count
-            FROM inventory i
-            JOIN products p ON i.product_id = p.product_id
-            ${warehouseFilter}
-        `, params);
+		await client.query("BEGIN");
 
-        res.json({
-            success: true,
-            stats: statsResult.rows[0]
-        });
-    } catch (err) {
-        console.error("Error fetching inventory stats:", err.message);
-        res.status(500).json({ success: false, error: err.message });
-    }
-};
+		const currentResult = await client.query(
+			`
+			SELECT inventory_id, product_id, warehouse_id, quantity
+			FROM inventory
+			WHERE inventory_id = $1
+			FOR UPDATE
+			`,
+			[inventoryId]
+		);
 
-/**
- * Get low stock alerts
- */
-const getLowStockAlerts = async (req, res) => {
-    try {
-        const { warehouse_id } = req.query;
+		if (currentResult.rows.length === 0) {
+			await client.query("ROLLBACK");
+			return res.status(404).json("Inventory row not found");
+		}
 
-        let query = `
-            SELECT 
-                p.product_id,
-                p.name as product_name,
-                p.sku,
-                p.reorder_level,
-                i.quantity,
-                w.warehouse_id,
-                w.name as warehouse_name,
-                (p.reorder_level - i.quantity) as units_needed
-            FROM products p
-            JOIN inventory i ON p.product_id = i.product_id
-            JOIN warehouses w ON i.warehouse_id = w.warehouse_id
-            WHERE i.quantity <= p.reorder_level
-        `;
+		const currentRow = currentResult.rows[0];
+		const reservedQuantity = onHand - freeToUse;
+		const adjustment = onHand - Number(currentRow.quantity);
 
-        const params = [];
+		const updateResult = await client.query(
+			`
+			UPDATE inventory
+			SET quantity = $1,
+				reserved_quantity = $2,
+				last_updated = NOW()
+			WHERE inventory_id = $3
+			RETURNING inventory_id, product_id, warehouse_id, quantity, reserved_quantity, last_updated
+			`,
+			[onHand, reservedQuantity, inventoryId]
+		);
 
-        if (warehouse_id) {
-            params.push(warehouse_id);
-            query += ` AND w.warehouse_id = $${params.length}`;
-        }
+		await client.query(
+			`
+			INSERT INTO stock_adjustments (product_id, warehouse_id, adjustment, reason, adjusted_by)
+			VALUES ($1, $2, $3, $4, $5)
+			`,
+			[
+				currentRow.product_id,
+				currentRow.warehouse_id,
+				adjustment,
+				"Inline stock edit",
+				userId
+			]
+		);
 
-        query += ` ORDER BY (p.reorder_level - i.quantity) DESC`;
+		await client.query("COMMIT");
 
-        const result = await pool.query(query, params);
+		await logOperation(
+			userId,
+			"ADJUSTMENT",
+			{
+				product_id: currentRow.product_id,
+				warehouse_id: currentRow.warehouse_id,
+				quantity: adjustment
+			},
+			updateResult.rows[0].inventory_id
+		);
 
-        res.json({
-            success: true,
-            data: result.rows,
-            alert_count: result.rows.length
-        });
-    } catch (err) {
-        console.error("Error fetching low stock alerts:", err.message);
-        res.status(500).json({ success: false, error: err.message });
-    }
+		clearStockCache();
+
+		return res.json({
+			message: "Stock updated successfully",
+			stock: {
+				inventory_id: updateResult.rows[0].inventory_id,
+				product_id: updateResult.rows[0].product_id,
+				warehouse_id: updateResult.rows[0].warehouse_id,
+				on_hand: Number(updateResult.rows[0].quantity),
+				free_to_use: Number(updateResult.rows[0].quantity) - Number(updateResult.rows[0].reserved_quantity),
+				last_updated: updateResult.rows[0].last_updated
+			}
+		});
+	} catch (err) {
+		await client.query("ROLLBACK");
+		console.error("Error updating stock inventory:", err.message);
+		return res.status(500).json("Server Error");
+	} finally {
+		client.release();
+	}
 };
 
 module.exports = {
-    getAllInventory,
-    getProductInventory,
-    getWarehouseInventory,
-    createAdjustment,
-    getAllAdjustments,
-    getAdjustment,
-    getInventoryStats,
-    getLowStockAlerts
+	getStockInventory,
+	updateStockInventory,
+	clearStockCache
 };
