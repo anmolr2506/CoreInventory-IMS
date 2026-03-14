@@ -3,6 +3,7 @@ import {
     LayoutDashboard,
     ClipboardList,
     Package,
+    Truck,
     ArrowRightLeft,
     Settings,
     LogOut,
@@ -10,16 +11,22 @@ import {
 } from 'lucide-react';
 
 const navItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, description: 'Overview of your inventory management system with key metrics and analytics.' },
-    { id: 'operations', label: 'Operations', icon: ClipboardList, description: 'Manage all incoming receipts, outgoing deliveries, and internal transfers.' },
-    { id: 'stock', label: 'Stock', icon: Package, description: 'View and manage current stock levels across all warehouses and categories.' },
-    { id: 'move-history', label: 'Move History', icon: ArrowRightLeft, description: 'Track all product movements including transfers, receipts, and deliveries.' },
-    { id: 'settings', label: 'Settings', icon: Settings, description: 'Configure system preferences, user roles, and notification settings.' },
+    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, path: '/', description: 'Overview of your inventory management system with key metrics and analytics.' },
+    { id: 'operations', label: 'Operations', icon: ClipboardList, path: '/receipt', description: 'Manage incoming receipts.' },
+    { id: 'delivery', label: 'Delivery Orders', icon: Truck, path: '/delivery', description: 'Manage outgoing deliveries.' },
+    { id: 'stock', label: 'Stock', icon: Package, path: '/stock', description: 'View and manage current stock levels across all warehouses and categories.' },
+    { id: 'move-history', label: 'Move History', icon: ArrowRightLeft, path: '/move-history', description: 'Track all product movements including transfers, receipts, and deliveries.' },
+    { id: 'settings', label: 'Settings', icon: Settings, path: '/settings', description: 'Configure system preferences, user roles, and notification settings.' },
 ];
 
-const Sidebar = ({ username, activeItem = 'dashboard', onLogout }) => {
+const Sidebar = ({ username, activeItem = 'dashboard', onLogout, onNav }) => {
 
     const handleNavClick = (item) => {
+        const appPaths = ['/', '/dashboard', '/receipt', '/delivery', '/operation/new'];
+        if (onNav && item.path && appPaths.includes(item.path)) {
+            onNav(item.path);
+            return;
+        }
         const pageContent = `
             <!DOCTYPE html>
             <html>

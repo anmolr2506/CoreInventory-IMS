@@ -44,7 +44,8 @@ VALUES
 ('Steel Rod', 'STL001', 1, 'kg', 10),
 ('Steel Sheet', 'STL002', 1, 'kg', 20),
 ('Office Chair', 'CHR001', 2, 'units', 5),
-('LED Monitor', 'ELC001', 3, 'units', 3)
+('LED Monitor', 'ELC001', 3, 'units', 3),
+('Desk', 'DESK001', 2, 'units', 5)
 ON CONFLICT (sku) DO NOTHING;
 
 -- ================================
@@ -63,11 +64,11 @@ ON CONFLICT (product_id, warehouse_id) DO NOTHING;
 -- SUPPLIERS
 -- ================================
 
-INSERT INTO suppliers (name, contact_person, email, phone)
+INSERT INTO suppliers (name, contact_person, email, phone, address)
 VALUES
-('SteelCorp Ltd', 'Raj Mehta', 'raj@steelcorp.com', '9876543210'),
-('OfficeMart', 'Anita Shah', 'anita@officemart.com', '9876543211'),
-('ElectroWorld', 'Vikas Patel', 'vikas@electroworld.com', '9876543212')
+('SteelCorp Ltd', 'Raj Mehta', 'raj@steelcorp.com', '9876543210', '123 Industrial Ave, Mumbai'),
+('OfficeMart', 'Anita Shah', 'anita@officemart.com', '9876543211', '45 Office Park, Delhi'),
+('ElectroWorld', 'Vikas Patel', 'vikas@electroworld.com', '9876543212', '78 Tech Hub, Bangalore')
 ON CONFLICT (name) DO NOTHING;
 
 -- ================================
@@ -79,5 +80,6 @@ VALUES
 (1,1,45.50,5),
 (1,2,60.00,7),
 (2,3,1200.00,3),
-(3,4,9000.00,10)
+(3,4,9000.00,10),
+(2,5,3500.00,5)
 ON CONFLICT DO NOTHING;

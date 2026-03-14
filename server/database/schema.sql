@@ -59,6 +59,7 @@ CREATE TABLE IF NOT EXISTS receipts (
     quantity INT NOT NULL CHECK (quantity > 0),
     received_by INT,
     received_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    status VARCHAR(30) DEFAULT 'Received',
 
     CONSTRAINT fk_receipt_product
         FOREIGN KEY (product_id)
@@ -80,6 +81,7 @@ CREATE TABLE IF NOT EXISTS deliveries (
     quantity INT NOT NULL CHECK (quantity > 0),
     delivered_by INT,
     delivered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    status VARCHAR(30) DEFAULT 'Delivered',
 
     CONSTRAINT fk_delivery_product
         FOREIGN KEY (product_id)

@@ -5,7 +5,7 @@ import {
     Bell, Plus, Search, HelpCircle, ShieldCheck
 } from 'lucide-react';
 
-const Dashboard = ({ username }) => {
+const Dashboard = ({ username, onNavigate }) => {
     const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(true);
 
@@ -119,7 +119,7 @@ const Dashboard = ({ username }) => {
 
                         {/* New Operation Button */}
                         <button
-                            onClick={() => openDetailTab('New Operation', 'Create a new receipt, delivery, or transfer operation to manage your inventory flow.')}
+                            onClick={() => onNavigate ? onNavigate('/operation/new') : openDetailTab('New Operation', 'Create a new receipt, delivery, or transfer operation to manage your inventory flow.')}
                             className="flex items-center space-x-2 px-5 py-2.5 bg-cyan-500 hover:bg-cyan-400 text-white font-semibold text-sm rounded-xl shadow-[0_0_15px_rgba(6,182,212,0.3)] hover:shadow-[0_0_25px_rgba(6,182,212,0.5)] transition-all duration-300 transform hover:-translate-y-0.5 cursor-pointer"
                         >
                             <Plus className="w-4 h-4" />
@@ -182,7 +182,7 @@ const Dashboard = ({ username }) => {
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                     {/* Receipt - Incoming */}
                     <div
-                        onClick={() => openDetailTab('Incoming Receipts', `Track all incoming inventory. ${s.incoming?.itemsToReceive || 0} items received this week, ${s.incoming?.late || 0} overdue, ${s.incoming?.totalOperations || 0} total receipt operations.`)}
+                        onClick={() => onNavigate ? onNavigate('/receipt') : openDetailTab('Incoming Receipts', `Track all incoming inventory. ${s.incoming?.itemsToReceive || 0} items received this week, ${s.incoming?.late || 0} overdue, ${s.incoming?.totalOperations || 0} total receipt operations.`)}
                         className="bg-[#111827] border border-[#1e293b] rounded-2xl p-6 hover:border-emerald-500/30 hover:shadow-[0_0_20px_rgba(16,185,129,0.08)] transition-all duration-300 cursor-pointer group"
                     >
                         <div className="flex items-center justify-between mb-4">
@@ -218,7 +218,7 @@ const Dashboard = ({ username }) => {
 
                     {/* Delivery - Outgoing */}
                     <div
-                        onClick={() => openDetailTab('Outgoing Deliveries', `Manage outgoing shipments. ${s.outgoing?.itemsToDeliver || 0} items delivered this week, ${s.outgoing?.late || 0} overdue, ${s.outgoing?.waiting || 0} waiting, ${s.outgoing?.totalOperations || 0} total delivery operations.`)}
+                        onClick={() => onNavigate ? onNavigate('/delivery') : openDetailTab('Outgoing Deliveries', `Manage outgoing shipments. ${s.outgoing?.itemsToDeliver || 0} items delivered this week, ${s.outgoing?.late || 0} overdue, ${s.outgoing?.waiting || 0} waiting, ${s.outgoing?.totalOperations || 0} total delivery operations.`)}
                         className="bg-[#111827] border border-[#1e293b] rounded-2xl p-6 hover:border-purple-500/30 hover:shadow-[0_0_20px_rgba(147,51,234,0.08)] transition-all duration-300 cursor-pointer group"
                     >
                         <div className="flex items-center justify-between mb-4">
