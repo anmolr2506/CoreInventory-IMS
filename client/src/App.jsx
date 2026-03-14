@@ -1,7 +1,113 @@
-export default function App() {
+import React, { useState } from 'react';
+import Signup from './components/signup.jsx';
+import Login from './components/login.jsx';
+import ForgotPassword from './components/forgotPassword.jsx';
+import { ToastContainer } from 'react-toastify';
+import { Package, TrendingUp, Building2, FileText } from 'lucide-react';
+import 'react-toastify/dist/ReactToastify.css';
+
+function App() {
+  const [authView, setAuthView] = useState('landing'); // 'landing', 'login', 'signup', 'forgot_password'
+
   return (
-    <h1 className="text-4xl font-bold text-blue-600">
-      Tailwind Working 🚀
-    </h1>
-  )
+    <div className="flex min-h-screen w-full font-sans bg-[#0a0f1c] text-slate-300">
+      
+      {/* Left Pane - Static Branding */}
+      <div className="hidden lg:flex flex-col justify-center w-5/12 p-16 xl:p-24 border-r border-[#1e293b] bg-[#0f172a]/50">
+        
+        {/* Logo Section */}
+        <div className="flex items-center space-x-4 mb-8">
+          <div className="p-3 bg-cyan-500 rounded-xl shadow-[0_0_15px_rgba(6,182,212,0.5)]">
+            <Package className="w-8 h-8 text-white" />
+          </div>
+          <h1 className="text-4xl font-extrabold text-white tracking-tight">Core Inventory</h1>
+        </div>
+        
+        <p className="text-lg text-slate-400 max-w-md mb-12 leading-relaxed">
+          Transform your manual registers and Excel sheets into a powerful, real-time inventory management system.
+        </p>
+
+        <h3 className="text-xs font-bold text-slate-500 tracking-widest uppercase mb-6">Why Core Inventory?</h3>
+
+        {/* Feature List */}
+        <div className="space-y-4">
+          
+          <div className="bg-[#1e293b]/40 border border-[#334155]/50 p-5 rounded-xl flex items-start space-x-4 hover:border-cyan-500/30 transition-colors">
+             <TrendingUp className="w-6 h-6 text-cyan-400 mt-1 flex-shrink-0" />
+             <div>
+                <h4 className="text-white font-semibold text-lg mb-1">Real-time Stock Tracking</h4>
+                <p className="text-sm text-slate-400">Monitor inventory levels across all locations with live updates and alerts.</p>
+             </div>
+          </div>
+
+          <div className="bg-[#1e293b]/40 border border-[#334155]/50 p-5 rounded-xl flex items-start space-x-4 hover:border-cyan-500/30 transition-colors">
+             <Building2 className="w-6 h-6 text-cyan-400 mt-1 flex-shrink-0" />
+             <div>
+                <h4 className="text-white font-semibold text-lg mb-1">Multi-warehouse Support</h4>
+                <p className="text-sm text-slate-400">Manage multiple warehouses and distribution centers from a single platform.</p>
+             </div>
+          </div>
+
+          <div className="bg-[#1e293b]/40 border border-[#334155]/50 p-5 rounded-xl flex items-start space-x-4 hover:border-cyan-500/30 transition-colors">
+             <FileText className="w-6 h-6 text-cyan-400 mt-1 flex-shrink-0" />
+             <div>
+                <h4 className="text-white font-semibold text-lg mb-1">Automated Ledger</h4>
+                <p className="text-sm text-slate-400">Generate comprehensive reports and maintain accurate digital records automatically.</p>
+             </div>
+          </div>
+
+        </div>
+      </div>
+
+      {/* Right Pane - Dynamic Auth View */}
+      <div className="flex flex-col justify-center items-center w-full lg:w-7/12 relative bg-[#0a0f1c]">
+        <div className="absolute top-4 right-4 z-50">
+          <ToastContainer
+            position="top-right"
+            autoClose={3000}
+            hideProgressBar={false}
+            newestOnTop={false}
+            closeOnClick
+            pauseOnHover
+            theme="colored"
+          />
+        </div>
+
+        {authView === 'landing' && (
+          <div className="flex flex-col items-center justify-center space-y-6 animate-fade-in-up p-10 bg-[#162032] border border-[#27354f] rounded-2xl shadow-2xl max-w-md w-full">
+            <h2 className="text-3xl font-bold text-white mb-2">Welcome Back</h2>
+            <p className="text-slate-400 text-center mb-8">Sign in to access your dashboard or create a new account.</p>
+            <button 
+              onClick={() => setAuthView('login')}
+              className="w-full bg-cyan-500 hover:bg-cyan-400 text-white font-bold py-4 rounded-xl shadow-[0_0_15px_rgba(6,182,212,0.4)] transition-all duration-300 transform hover:-translate-y-1"
+            >
+              Sign In
+            </button>
+            <p className="text-slate-400 text-sm mt-4">
+              Don't have an account? <span onClick={() => setAuthView('signup')} className="text-cyan-400 cursor-pointer font-semibold hover:underline">Sign Up</span>
+            </p>
+          </div>
+        )}
+
+        {authView === 'login' && <Login onToggleForm={() => setAuthView('signup')} onToggleForgotPassword={() => setAuthView('forgot_password')} />}
+        {authView === 'signup' && <Signup onToggleForm={() => setAuthView('login')} />}
+        {authView === 'forgot_password' && <ForgotPassword onBackToLogin={() => setAuthView('login')} />}
+        
+        {/* Back button when not on landing and not on forgot_password (it has its own back button) */}
+        {authView !== 'landing' && authView !== 'forgot_password' && (
+          <div className="absolute top-6 left-6">
+            <button 
+              onClick={() => setAuthView('landing')} 
+              className="text-gray-400 hover:text-gray-700 font-semibold flex items-center transition-colors"
+            >
+              ← Back
+            </button>
+          </div>
+        )}
+
+      </div>
+    </div>
+  );
 }
+
+export default App;
