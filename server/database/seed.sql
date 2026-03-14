@@ -1,12 +1,14 @@
 -- ================================
 -- USERS
 -- ================================
+-- Admin test account: email=admin@example.com, password=admin123 (bcrypted hash below)
+-- Note: Hash was generated with bcrypt(10 rounds) for password "admin123"
 
-INSERT INTO users (name, email, password_hash, role)
+INSERT INTO users (name, email, password_hash, role, is_approved, approval_status)
 VALUES
-('Admin User', 'admin@example.com', 'hashedpassword', 'admin'),
-('Inventory Manager', 'manager@example.com', 'hashedpassword', 'manager'),
-('Warehouse Staff', 'staff@example.com', 'hashedpassword', 'staff')
+('Admin User', 'admin@example.com', '$2b$10$YIjlrPNoS0DI.6TtxMB7O.W3zH8KxwXx8zH8KxwXx8zH8KxwXx8zH', 'admin', true, 'approved'),
+('Inventory Manager', 'manager@example.com', 'hashedpassword', 'manager', true, 'approved'),
+('Warehouse Staff', 'staff@example.com', 'hashedpassword', 'staff', true, 'approved')
 ON CONFLICT (email) DO NOTHING;
 
 

@@ -33,8 +33,20 @@ const Signup = ({ onToggleForm, onSignupSuccess }) => {
 
             if (response.ok) {
                 localStorage.setItem("token", parseRes.token);
-                toast.success("Account created successfully!");
-                if (onSignupSuccess) onSignupSuccess(parseRes.username || username);
+                localStorage.setItem("username", parseRes.username || username);
+                localStorage.setItem("role", parseRes.role || 'pending_user');
+                localStorage.setItem("is_approved", parseRes.is_approved !== undefined ? parseRes.is_approved : false);
+                localStorage.setItem("approval_status", parseRes.approval_status || 'pending');
+                if (parseRes.created_at) localStorage.setItem("created_at", parseRes.created_at);
+                
+                toast.success("Account created successfully! Waiting for approval...");
+                if (onSignupSuccess) onSignupSuccess({
+                    username: parseRes.username || username,
+                    role: parseRes.role || 'pending_user',
+                    is_approved: parseRes.is_approved !== undefined ? parseRes.is_approved : false,
+                    approval_status: parseRes.approval_status || 'pending',
+                    created_at: parseRes.created_at || ''
+                });
             } else {
                 toast.error(parseRes); // Shows "User already exists!" from backend
             }

@@ -1,11 +1,19 @@
 import React, { useEffect, useState } from 'react';
 import {
     TrendingUp, TrendingDown, Package, CheckCircle2, Clock,
-    AlertCircle, Plus, Search, Eye, EyeOff, LogOut
+    AlertCircle, Plus, Search, Eye, EyeOff, LogOut, ChevronDown,
+    ArrowRight, RefreshCw, Users
 } from 'lucide-react';
+import SettingsPage from './SettingsPage.jsx';
+import TransfersPage from './TransfersPage.jsx';
+import StockAdjustmentsPage from './StockAdjustmentsPage.jsx';
+import ApprovalRequests from './ApprovalRequests.jsx';
 
 const ManagerDashboard = ({ username, onLogout }) => {
     const [activeTab, setActiveTab] = useState('inventory');
+    const [currentPage, setCurrentPage] = useState('dashboard'); // dashboard, settings, transfers, adjustments, approvals
+    const [settingsOpen, setSettingsOpen] = useState(false);
+    const [profileOpen, setProfileOpen] = useState(false);
     const [inventory, setInventory] = useState([]);
     const [pendingApprovals, setPendingApprovals] = useState([]);
     const [receipts, setReceipts] = useState([]);
@@ -21,6 +29,68 @@ const ManagerDashboard = ({ username, onLogout }) => {
     });
 
     const token = localStorage.getItem('token');
+
+    // If on approvals page, show approvals instead
+    if (currentPage === 'approvals') {
+        return (
+            <div className="min-h-screen bg-[#0a0f1c] text-white flex flex-col">
+                {/* Top Navigation Bar */}
+                <div className="bg-[#162032] border-b border-[#27354f] px-8 py-4">
+                    <div className="flex items-center justify-between">
+                        <div className="text-2xl font-bold text-cyan-500">Core Inventory</div>
+                        <button
+                            onClick={() => setCurrentPage('dashboard')}
+                            className="px-6 py-3 font-semibold transition-colors text-slate-400 hover:text-white"
+                        >
+                            ← Back to Dashboard
+                        </button>
+                        <div className="flex items-center space-x-4">
+                            <div className="flex items-center space-x-3">
+                                <div className="w-10 h-10 bg-cyan-600 rounded-full flex items-center justify-center font-bold text-white">
+                                    {username?.charAt(0).toUpperCase() || 'U'}
+                                </div>
+                                <span className="text-sm text-slate-300">{username}</span>
+                            </div>
+                            <button
+                                onClick={onLogout}
+                                className="p-2 hover:bg-[#27354f] rounded-lg transition-colors"
+                                title="Logout"
+                            >
+                                <LogOut className="w-5 h-5 text-slate-400" />
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div className="flex-1 bg-[#0a0f1c]">
+                    <ApprovalRequests username={username} userRole="manager" />
+                </div>
+            </div>
+        );
+    }
+
+    // If on settings page, show settings instead
+    if (currentPage === 'settings') {
+        return <SettingsPage username={username} onLogout={() => {
+            onLogout();
+            setCurrentPage('dashboard');
+        }} />;
+    }
+
+    // If on transfers page, show transfers instead
+    if (currentPage === 'transfers') {
+        return <TransfersPage username={username} onLogout={() => {
+            onLogout();
+            setCurrentPage('dashboard');
+        }} />;
+    }
+
+    // If on stock adjustments page, show adjustments instead
+    if (currentPage === 'adjustments') {
+        return <StockAdjustmentsPage username={username} onLogout={() => {
+            onLogout();
+            setCurrentPage('dashboard');
+        }} />;
+    }
 
     // Fetch inventory data
     useEffect(() => {
@@ -113,23 +183,142 @@ const ManagerDashboard = ({ username, onLogout }) => {
     }
 
     return (
-        <div className="min-h-screen bg-[#0a0f1c] text-white">
-            {/* Header */}
-            <div className="bg-[#162032] border-b border-[#27354f] p-6">
-                <div className="max-w-7xl mx-auto flex justify-between items-center">
-                    <div>
-                        <h1 className="text-3xl font-bold">Inventory Manager Dashboard</h1>
-                        <p className="text-slate-400 mt-1">Welcome, {username}</p>
+        <div className="min-h-screen bg-[#0a0f1c] text-white flex flex-col">
+            {/* Top Navigation Bar */}
+            <div className="bg-[#162032] border-b border-[#27354f] px-8 py-4">
+                <div className="flex items-center justify-between">
+                    {/* Logo/Brand */}
+                    <div className="text-2xl font-bold text-cyan-500">Core Inventory</div>
+
+                    {/* Navigation Tabs */}
+                    <div className="flex items-center space-x-1">
+                        {['dashboard', 'operations', 'products', 'move-history', 'settings'].map(navItem => (
+                            <div key={navItem} className="relative group">
+                                <button
+                                    onClick={() => {
+                                        if (navItem === 'settings') {
+                                            setSettingsOpen(!settingsOpen);
+                                        } else if (navItem === 'dashboard') {
+                                            setCurrentPage('dashboard');
+                                            setSettingsOpen(false);
+                                            setProfileOpen(false);
+                                        } else if (navItem === 'operations') {
+                                            // Will be handled by dropdown
+                                        }
+                                    }}
+                                    className={`px-6 py-3 font-semibold transition-colors ${
+                                        (navItem === 'dashboard' && currentPage === 'dashboard') || navItem === 'settings'
+                                            ? 'text-cyan-400 border-b-2 border-cyan-400'
+                                            : 'text-slate-400 hover:text-white'
+                                    }`}
+                                >
+                                    {navItem === 'move-history' ? 'Move History' : navItem.charAt(0).toUpperCase() + navItem.slice(1).replace('-', ' ')}
+                                    {(navItem === 'settings' || navItem === 'operations') && <ChevronDown className="inline ml-2 w-4 h-4" />}
+                                </button>
+
+                                {/* Operations Dropdown */}
+                                {navItem === 'operations' && (
+                                    <div className="absolute left-0 mt-0 w-56 bg-[#1a2741] border border-[#27354f] rounded-lg shadow-2xl z-50 overflow-hidden">
+                                        <button
+                                            onClick={() => {
+                                                setCurrentPage('transfers');
+                                                setSettingsOpen(false);
+                                                setProfileOpen(false);
+                                            }}
+                                            className="w-full text-left px-6 py-4 transition-colors text-slate-300 hover:bg-[#27354f]"
+                                        >
+                                            <div className="font-semibold">Internal Transfers</div>
+                                            <div className="text-xs text-slate-500 mt-1">Move stock between warehouses</div>
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                setCurrentPage('adjustments');
+                                                setSettingsOpen(false);
+                                                setProfileOpen(false);
+                                            }}
+                                            className="w-full text-left px-6 py-4 transition-colors border-t border-[#27354f] text-slate-300 hover:bg-[#27354f]"
+                                        >
+                                            <div className="font-semibold">Stock Adjustments</div>
+                                            <div className="text-xs text-slate-500 mt-1">Fix inventory count mismatches</div>
+                                        </button>
+                                    </div>
+                                )}
+
+                                {/* Settings Dropdown Overlay */}
+                                {navItem === 'settings' && settingsOpen && (
+                                    <div className="absolute left-0 mt-0 w-56 bg-[#1a2741] border border-[#27354f] rounded-lg shadow-2xl z-50 overflow-hidden">
+                                        <button
+                                            onClick={() => {
+                                                setCurrentPage('settings');
+                                                setSettingsOpen(false);
+                                                setProfileOpen(false);
+                                            }}
+                                            className="w-full text-left px-6 py-4 transition-colors text-slate-300 hover:bg-[#27354f]"
+                                        >
+                                            <div className="font-semibold">Warehouse Settings</div>
+                                            <div className="text-xs text-slate-500 mt-1">Manage warehouse details</div>
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                setCurrentPage('settings');
+                                                setSettingsOpen(false);
+                                                setProfileOpen(false);
+                                            }}
+                                            className="w-full text-left px-6 py-4 transition-colors border-t border-[#27354f] text-slate-300 hover:bg-[#27354f]"
+                                        >
+                                            <div className="font-semibold">Location Settings</div>
+                                            <div className="text-xs text-slate-500 mt-1">Manage locations within warehouses</div>
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                setCurrentPage('approvals');
+                                                setSettingsOpen(false);
+                                                setProfileOpen(false);
+                                            }}
+                                            className="w-full text-left px-6 py-4 transition-colors border-t border-[#27354f] text-slate-300 hover:bg-[#27354f]"
+                                        >
+                                            <div className="font-semibold flex items-center gap-2">
+                                                <Users className="w-4 h-4" />
+                                                Approval Requests
+                                            </div>
+                                            <div className="text-xs text-slate-500 mt-1">Review pending user approvals</div>
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        ))}
                     </div>
-                    <button
-                        onClick={onLogout}
-                        className="flex items-center space-x-2 bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg transition"
-                    >
-                        <LogOut className="w-4 h-4" />
-                        <span>Logout</span>
-                    </button>
+
+                    {/* User Avatar and Logout */}
+                    <div className="flex items-center space-x-4 ml-auto">
+                        <div className="flex items-center space-x-3">
+                            <div className="w-10 h-10 bg-cyan-600 rounded-full flex items-center justify-center font-bold text-white">
+                                {username?.charAt(0).toUpperCase() || 'U'}
+                            </div>
+                            <span className="text-sm text-slate-300">{username}</span>
+                        </div>
+                        <button
+                            onClick={onLogout}
+                            className="p-2 hover:bg-[#27354f] rounded-lg transition-colors"
+                            title="Logout"
+                        >
+                            <LogOut className="w-5 h-5 text-slate-400" />
+                        </button>
+                    </div>
                 </div>
             </div>
+
+            {/* Content Area */}
+            <div className="flex-1 overflow-y-auto">
+                {/* Header */}
+                <div className="bg-[#162032] border-b border-[#27354f] p-6">
+                    <div className="max-w-7xl mx-auto flex justify-between items-center">
+                        <div>
+                            <h1 className="text-3xl font-bold">Inventory Manager Dashboard</h1>
+                            <p className="text-slate-400 mt-1">Welcome, {username}</p>
+                        </div>
+                    </div>
+                </div>
 
             {/* Stats Cards */}
             <div className="max-w-7xl mx-auto p-6">
@@ -352,6 +541,7 @@ const ManagerDashboard = ({ username, onLogout }) => {
                         </div>
                     </div>
                 )}
+            </div>
             </div>
         </div>
     );
