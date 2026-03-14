@@ -1,5 +1,6 @@
 const router = require("express").Router();
 const authorizeToken = require("../middleware/authMiddleware");
+const requireApprovedUser = require("../middleware/requireApprovedUser");
 const { checkRole, checkWarehouseAccess } = require("../middleware/roleAuthorization");
 const {
     getAllInventory,
@@ -23,8 +24,11 @@ const { getStockInventory, updateStockInventory } = require("../controllers/inve
  * ADMIN: Full access
  */
 
+// All inventory endpoints require an approved account.
+router.use(authorizeToken, requireApprovedUser);
+
 // Get all inventory (filtered by warehouse access)
-router.get("/inventory", authorizeToken, async (req, res) => {
+router.get("/inventory", async (req, res) => {
     try {
         const userId = req.user.id;
 
@@ -98,13 +102,13 @@ router.get("/inventory", authorizeToken, async (req, res) => {
 });
 
 // Stock screen inventory endpoint (optimized for inline editing use case)
-router.get("/inventory/stock", authorizeToken, getStockInventory);
+router.get("/inventory/stock", getStockInventory);
 
 // Inline stock update (admin/manager only)
-router.patch("/inventory/stock/:inventory_id", authorizeToken, updateStockInventory);
+router.patch("/inventory/stock/:inventory_id", checkRole(['manager', 'admin']), updateStockInventory);
 
 // Get inventory for specific warehouse
-router.get("/inventory/warehouse/:warehouse_id", authorizeToken, checkWarehouseAccess, async (req, res) => {
+router.get("/inventory/warehouse/:warehouse_id", checkWarehouseAccess, async (req, res) => {
     try {
         const { warehouse_id } = req.params;
 
@@ -133,7 +137,7 @@ router.get("/inventory/warehouse/:warehouse_id", authorizeToken, checkWarehouseA
 });
 
 // Create a receipt (managers and admins only) - PENDING approval
-router.post("/inventory/receipt", authorizeToken, checkRole(['manager', 'admin']), async (req, res) => {
+router.post("/inventory/receipt", checkRole(['manager', 'admin']), async (req, res) => {
     try {
         const { product_id, warehouse_id, supplier_id, quantity } = req.body;
         const userId = req.user.id;
@@ -169,7 +173,7 @@ router.post("/inventory/receipt", authorizeToken, checkRole(['manager', 'admin']
 });
 
 // Create a delivery (managers and admins only) - PENDING approval
-router.post("/inventory/delivery", authorizeToken, checkRole(['manager', 'admin']), async (req, res) => {
+router.post("/inventory/delivery", checkRole(['manager', 'admin']), async (req, res) => {
     try {
         const { product_id, warehouse_id, customer_name, quantity } = req.body;
         const userId = req.user.id;
@@ -220,7 +224,7 @@ router.post("/inventory/delivery", authorizeToken, checkRole(['manager', 'admin'
 });
 
 // Get stock adjustments history
-router.get("/inventory/adjustments", authorizeToken, async (req, res) => {
+router.get("/inventory/adjustments", async (req, res) => {
     try {
         const userId = req.user.id;
 
@@ -286,7 +290,7 @@ router.get("/inventory/adjustments", authorizeToken, async (req, res) => {
 });
 
 // Get receipt history
-router.get("/inventory/receipts", authorizeToken, async (req, res) => {
+router.get("/inventory/receipts", async (req, res) => {
     try {
         const result = await pool.query(`
             SELECT 
@@ -315,7 +319,7 @@ router.get("/inventory/receipts", authorizeToken, async (req, res) => {
 });
 
 // Get delivery history
-router.get("/inventory/deliveries", authorizeToken, async (req, res) => {
+router.get("/inventory/deliveries", async (req, res) => {
     try {
         const result = await pool.query(`
             SELECT 

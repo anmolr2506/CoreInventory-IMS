@@ -1,5 +1,6 @@
 const router = require("express").Router();
 const authorizeToken = require("../middleware/authMiddleware");
+const requireApprovedUser = require("../middleware/requireApprovedUser");
 const { checkRole } = require("../middleware/roleAuthorization");
 const approvalController = require("../controllers/approvalController");
 
@@ -12,6 +13,7 @@ const approvalController = require("../controllers/approvalController");
 router.get(
     "/pending",
     authorizeToken,
+    requireApprovedUser,
     checkRole(['manager', 'admin']),
     approvalController.getPendingApprovals
 );
@@ -20,6 +22,7 @@ router.get(
 router.post(
     "/receipt/:receipt_id/approve",
     authorizeToken,
+    requireApprovedUser,
     checkRole(['manager', 'admin']),
     approvalController.approveReceipt
 );
@@ -28,6 +31,7 @@ router.post(
 router.post(
     "/receipt/:receipt_id/reject",
     authorizeToken,
+    requireApprovedUser,
     checkRole(['manager', 'admin']),
     approvalController.rejectReceipt
 );
@@ -36,6 +40,7 @@ router.post(
 router.post(
     "/delivery/:delivery_id/approve",
     authorizeToken,
+    requireApprovedUser,
     checkRole(['manager', 'admin']),
     approvalController.approveDelivery
 );
@@ -44,6 +49,7 @@ router.post(
 router.post(
     "/delivery/:delivery_id/reject",
     authorizeToken,
+    requireApprovedUser,
     checkRole(['manager', 'admin']),
     approvalController.rejectDelivery
 );
@@ -52,6 +58,7 @@ router.post(
 router.post(
     "/transfer/:transfer_id/approve",
     authorizeToken,
+    requireApprovedUser,
     checkRole(['manager', 'admin']),
     approvalController.approveTransfer
 );

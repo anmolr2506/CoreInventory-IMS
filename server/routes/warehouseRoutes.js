@@ -1,5 +1,6 @@
 const router = require("express").Router();
 const authorizeToken = require("../middleware/authMiddleware");
+const requireApprovedUser = require("../middleware/requireApprovedUser");
 const { checkRole } = require("../middleware/roleAuthorization");
 const warehouseController = require("../controllers/warehouseController");
 
@@ -20,18 +21,18 @@ router.get("/warehouses", async (req, res) => {
 });
 
 // Get all warehouses (authenticated)
-router.get("/warehouses/list/all", authorizeToken, warehouseController.getAllWarehouses);
+router.get("/warehouses/list/all", authorizeToken, requireApprovedUser, warehouseController.getAllWarehouses);
 
 // Get warehouse by ID
-router.get("/warehouse/:warehouse_id", authorizeToken, warehouseController.getWarehouse);
+router.get("/warehouse/:warehouse_id", authorizeToken, requireApprovedUser, warehouseController.getWarehouse);
 
 // Create warehouse (admin/manager only)
-router.post("/warehouse", authorizeToken, checkRole(['admin', 'manager']), warehouseController.createWarehouse);
+router.post("/warehouse", authorizeToken, requireApprovedUser, checkRole(['admin', 'manager']), warehouseController.createWarehouse);
 
 // Update warehouse (admin/manager only)
-router.put("/warehouse/:warehouse_id", authorizeToken, checkRole(['admin', 'manager']), warehouseController.updateWarehouse);
+router.put("/warehouse/:warehouse_id", authorizeToken, requireApprovedUser, checkRole(['admin', 'manager']), warehouseController.updateWarehouse);
 
 // Delete warehouse (admin only)
-router.delete("/warehouse/:warehouse_id", authorizeToken, checkRole('admin'), warehouseController.deleteWarehouse);
+router.delete("/warehouse/:warehouse_id", authorizeToken, requireApprovedUser, checkRole('admin'), warehouseController.deleteWarehouse);
 
 module.exports = router;

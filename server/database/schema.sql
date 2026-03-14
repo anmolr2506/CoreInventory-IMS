@@ -204,6 +204,7 @@ CREATE TABLE IF NOT EXISTS stock_ledger (
         CHECK (operation_type IN ('RECEIPT','DELIVERY','TRANSFER','ADJUSTMENT')),
     quantity INT NOT NULL,
     reference_id INT,
+    idempotency_key TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT fk_ledger_product
@@ -214,6 +215,9 @@ CREATE TABLE IF NOT EXISTS stock_ledger (
         FOREIGN KEY (warehouse_id)
         REFERENCES warehouses(warehouse_id)
 );
+
+ALTER TABLE stock_ledger
+ADD COLUMN IF NOT EXISTS idempotency_key TEXT;
 
 CREATE TABLE IF NOT EXISTS suppliers (
     supplier_id SERIAL PRIMARY KEY,

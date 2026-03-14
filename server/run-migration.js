@@ -9,6 +9,8 @@ const migrations = [
   "update_receipt_trigger.sql",
   "delivery_schema_update.sql",
   "update_delivery_trigger.sql",
+  "add_ledger_idempotency.sql",
+  "add_outbox_inbox.sql",
 ];
 
 (async () => {
