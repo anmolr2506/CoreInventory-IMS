@@ -4,6 +4,9 @@ import Login from './components/login.jsx';
 import ForgotPassword from './components/forgotPassword.jsx';
 import NetflixIntro from './components/NetflixIntro.jsx';
 import Dashboard from './components/Dashboard.jsx';
+import ManagerDashboard from './components/ManagerDashboard.jsx';
+import StaffDashboard from './components/StaffDashboard.jsx';
+import AdminDashboard from './components/AdminDashboard.jsx';
 import Sidebar from './components/Sidebar.jsx';
 import { ToastContainer } from 'react-toastify';
 import { Package, TrendingUp, Building2, FileText } from 'lucide-react';
@@ -14,20 +17,29 @@ function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [showIntro, setShowIntro] = useState(false);
   const [username, setUsername] = useState('');
+  const [userRole, setUserRole] = useState('');
 
   // Check for existing token on mount
   useEffect(() => {
     const token = localStorage.getItem('token');
     const savedUsername = localStorage.getItem('username');
+    const savedRole = localStorage.getItem('role');
     if (token && savedUsername) {
       setUsername(savedUsername);
+      setUserRole(savedRole || 'staff');
       setIsAuthenticated(true);
     }
   }, []);
 
-  const handleAuthSuccess = (name) => {
+  const handleAuthSuccess = (userInfo) => {
+    // Can be either string (old way) or object (new way)
+    const name = typeof userInfo === 'string' ? userInfo : userInfo.username;
+    const role = typeof userInfo === 'string' ? localStorage.getItem('role') : userInfo.role;
+    
     setUsername(name);
+    setUserRole(role || 'staff');
     localStorage.setItem('username', name);
+    localStorage.setItem('role', role || 'staff');
     setShowIntro(true);
   };
 
@@ -39,8 +51,12 @@ function App() {
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('username');
+    localStorage.removeItem('role');
+    localStorage.removeItem('user_id');
+    localStorage.removeItem('warehouses');
     setIsAuthenticated(false);
     setUsername('');
+    setUserRole('');
     setAuthView('landing');
   };
 
@@ -49,12 +65,27 @@ function App() {
     return <NetflixIntro onComplete={handleIntroComplete} />;
   }
 
-  // Authenticated: Show Dashboard
+  // Authenticated: Show Role-Based Dashboard
   if (isAuthenticated) {
+    let DashboardComponent;
+    
+    switch(userRole) {
+      case 'admin':
+        DashboardComponent = <AdminDashboard username={username} onLogout={handleLogout} />;
+        break;
+      case 'manager':
+        DashboardComponent = <ManagerDashboard username={username} onLogout={handleLogout} />;
+        break;
+      case 'staff':
+        DashboardComponent = <StaffDashboard username={username} onLogout={handleLogout} />;
+        break;
+      default:
+        DashboardComponent = <Dashboard username={username} />;
+    }
+
     return (
-      <div className="flex min-h-screen w-full bg-[#0a0f1c] text-slate-300 animate-[fade-in_0.8s_ease-out]">
-        <Sidebar username={username} activeItem="dashboard" onLogout={handleLogout} />
-        <Dashboard username={username} />
+      <>
+        {DashboardComponent}
         <ToastContainer
           position="top-right"
           autoClose={3000}
@@ -64,7 +95,7 @@ function App() {
           pauseOnHover
           theme="colored"
         />
-      </div>
+      </>
     );
   }
 

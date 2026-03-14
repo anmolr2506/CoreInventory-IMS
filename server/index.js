@@ -4,6 +4,9 @@ const app = express();
 const cors = require("cors");
 const authRoutes = require("./routes/authRoutes");
 const dashboardRoutes = require("./routes/dashboardRoutes");
+const inventoryRoutes = require("./routes/inventoryRoutes");
+const transferRoutes = require("./routes/transferRoutes");
+const approvalRoutes = require("./routes/approvalRoutes");
 
 // Middleware
 app.use(express.json());
@@ -12,6 +15,9 @@ app.use(cors());
 // Routes
 app.use("/", authRoutes);
 app.use("/", dashboardRoutes);
+app.use("/", inventoryRoutes);
+app.use("/", transferRoutes);
+app.use("/approval", approvalRoutes);
 
 app.listen(5000, () => {
     console.log("Server running on port 5000");

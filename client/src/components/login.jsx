@@ -27,8 +27,22 @@ const Login = ({ onToggleForm, onToggleForgotPassword, onLoginSuccess }) => {
 
             if (response.ok) {
                 localStorage.setItem("token", parseRes.token);
-                toast.success("Login Successful!");
-                if (onLoginSuccess) onLoginSuccess(parseRes.username || 'User');
+                localStorage.setItem("username", parseRes.username || 'User');
+                localStorage.setItem("role", parseRes.role || 'staff');
+                localStorage.setItem("user_id", parseRes.user_id);
+                
+                // Store warehouse assignments for staff
+                if (parseRes.warehouses && parseRes.warehouses.length > 0) {
+                    localStorage.setItem("warehouses", JSON.stringify(parseRes.warehouses));
+                }
+
+                toast.success(`Login Successful! Welcome ${parseRes.role}!`);
+                if (onLoginSuccess) onLoginSuccess({
+                    username: parseRes.username || 'User',
+                    role: parseRes.role,
+                    warehouses: parseRes.warehouses || [],
+                    user_id: parseRes.user_id
+                });
             } else {
                 toast.error(parseRes); 
             }
